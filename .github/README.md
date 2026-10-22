@@ -16,6 +16,12 @@ This file lives in `.github/` so that the original `README.md` stays exactly as 
 Based on MystiaFin/amane at `544cbfc`.
 
 - **`Rectangle::backdrop()`:** asks the compositor to blur what's behind a shape, through `ext-background-effect-v1`. The blur follows the shape exactly, including rounded corners. This needs a compositor that supports the protocol, such as niri 26.04 or later.
+- **`Path::svg()` and `Path::view_box()`:** draw SVG path data, such as an icon's `d` attribute, in a `Canvas`. `view_box(x, y, width, height)` fits the data's own coordinates into the canvas, keeping its shape and centring it, like SVG's `meet`.
+- **Text rendering:**
+  - **Shaping:** text is shaped with swash, so a font's kerning and ligatures apply.
+  - **Letter placement:** letters are placed to a quarter pixel instead of each snapping to a whole pixel, which evens out the gaps between them.
+  - **Light text:** the soft edges of light letters are lifted, so white text on dark backgrounds no longer reads thin.
+  - The same applies to every widget that measures or draws text, so wrapping, eliding and the text-input caret follow the shaped widths.
 
 ## Support
 
