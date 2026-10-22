@@ -64,6 +64,11 @@ impl WaylandState {
 
         let fractional = self.make_fractional(role.wl_surface());
 
+        let background_effect = match role {
+            Role::Layer { .. } => self.make_background_effect(role.wl_surface()),
+            _ => None,
+        };
+
         let window = OpenWindow {
             view,
 
@@ -88,6 +93,8 @@ impl WaylandState {
             gpu,
 
             fractional,
+
+            background_effect,
 
             role,
 

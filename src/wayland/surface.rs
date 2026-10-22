@@ -18,6 +18,7 @@ use crate::{InputArea, LayerWindow, Monitor, Widget, Window};
 
 use super::{
     WaylandState,
+    effect::BackgroundEffect,
     layer::{self, Settings},
     scale::Fractional,
 };
@@ -56,6 +57,9 @@ pub struct OpenWindow {
 
     // none at whole scales; dropped before the role, since it belongs to its surface
     pub fractional: Option<Fractional>,
+
+    // only layers get one; dropped before the role, like the fractional scale
+    pub background_effect: Option<BackgroundEffect>,
 
     pub role: Role,
 

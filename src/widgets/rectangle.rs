@@ -22,6 +22,7 @@ pub struct Rectangle {
     pub(crate) border_thickness: f32,
     pub(crate) border_color: Color,
     pub(crate) blur: f32,
+    pub(crate) backdrop: bool,
     pub(crate) opacity: f32,
     pub(crate) shadow: Option<Shadow>,
     pub(crate) shader: Option<PathBuf>,
@@ -111,6 +112,16 @@ impl Rectangle {
         self
     }
 
+    /*
+     * asks the compositor to blur what's behind the window under this rounded
+     * rectangle, through ext-background-effect; the fill should be see-through
+     */
+    pub fn backdrop(mut self) -> Self {
+        self.backdrop = true;
+
+        self
+    }
+
     pub fn opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity;
 
@@ -196,6 +207,7 @@ impl RectangleNeedsHeight {
             border_thickness: 0.0,
             border_color: Color::TRANSPARENT,
             blur: 0.0,
+            backdrop: false,
             opacity: 1.0,
             shadow: None,
             shader: None,

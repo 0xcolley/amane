@@ -53,6 +53,10 @@ fn draw_in_place(rectangle: &Rectangle, renderer: &mut Renderer, area: Area) {
 
     renderer.blur(area, radius, rectangle.blur);
 
+    if rectangle.backdrop && rectangle.opacity > 0.0 {
+        renderer.backdrop(area, radius);
+    }
+
     // the rectangle holding a mask is still drawing into this renderer, so the cut lands in it
     if let Fill::Mask = rectangle.fill {
         renderer.cut(area, radius, rectangle.opacity);

@@ -20,6 +20,6 @@ pub(crate) use gpu::Session as GpuSession;
 pub use gradient::Gradient;
 pub use outline::Outline;
 pub use path::{BezierPath, PathBuilder};
-pub use renderer::{Renderer, VALUE_ROWS};
+pub use renderer::{Backdrop, Renderer, VALUE_ROWS};
 pub use transform::Transform;
 pub use weight::Weight;

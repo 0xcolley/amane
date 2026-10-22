@@ -43,7 +43,7 @@ impl OpenWindow {
             return;
         };
 
-        let frame = frame::build(
+        let mut frame = frame::build(
             root.as_ref(),
             self.width,
             self.height,
@@ -67,6 +67,11 @@ impl OpenWindow {
         if frame.moving {
             self.ask_for_frame();
         }
+
+        // the blur region goes out with the commit that presents the frame
+        let backdrops = frame.renderer.take_backdrops();
+
+        self.update_blur_region(&backdrops);
 
         let drawn = Instant::now();
 

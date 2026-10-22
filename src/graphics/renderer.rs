@@ -6,6 +6,14 @@ mod text;
 use super::{Area, Corners, Transform};
 
 pub use command::Command;
+
+// a rounded rectangle the compositor blurs behind, in buffer pixels through its transform
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Backdrop {
+    pub area: Area,
+    pub radius: Corners,
+    pub transform: Transform,
+}
 pub use effect::VALUE_ROWS;
 
 /*
@@ -15,6 +23,9 @@ pub use effect::VALUE_ROWS;
 pub struct Renderer {
     commands: Vec<Command>,
     transform: Transform,
+
+    // kept apart from the commands, since the gpu draws nothing for them
+    backdrops: Vec<Backdrop>,
 }
 
 impl Renderer {
@@ -28,7 +39,25 @@ impl Renderer {
         Self {
             commands: Vec::new(),
             transform,
+            backdrops: Vec::new(),
         }
+    }
+
+    pub fn backdrop(&mut self, area: Area, radius: Corners) {
+        if area.width <= 0.0 || area.height <= 0.0 {
+            return;
+        }
+
+        self.backdrops.push(Backdrop {
+            area,
+            radius,
+            transform: self.transform,
+        });
+    }
+
+    // the frame's backdrops, taken before its commands go to the gpu
+    pub fn take_backdrops(&mut self) -> Vec<Backdrop> {
+        std::mem::take(&mut self.backdrops)
     }
 
     pub fn finish(self) -> Vec<Command> {
@@ -39,14 +68,17 @@ impl Renderer {
         Self {
             commands: Vec::new(),
             transform: self.transform,
+            backdrops: Vec::new(),
         }
     }
 
-    pub fn blend(&mut self, group: Renderer, opacity: f32) {
+    pub fn blend(&mut self, mut group: Renderer, opacity: f32) {
         // rendering an invisible object is a waste of resource
         if opacity <= 0.0 {
             return;
         }
+
+        self.backdrops.append(&mut group.backdrops);
 
         let cuts = group
             .commands
@@ -67,11 +99,14 @@ impl Renderer {
     }
 
     // what the group drew only shows inside the rounded rectangle
-    pub fn clip(&mut self, group: Renderer, area: Area, radius: Corners) {
+    pub fn clip(&mut self, mut group: Renderer, area: Area, radius: Corners) {
         // an empty rectangle shows none of the group
         if area.width <= 0.0 || area.height <= 0.0 {
             return;
         }
+
+        // not cut to the clip, glass is meant to sit whole inside what holds it
+        self.backdrops.append(&mut group.backdrops);
 
         self.commands.push(Command::Clip {
             area,
