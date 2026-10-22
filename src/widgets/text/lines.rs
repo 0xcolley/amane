@@ -1,7 +1,7 @@
 use swash::FontRef;
 use swash::zeno::Bounds;
 
-use crate::graphics::font;
+use crate::graphics::{font, layout};
 
 // how text that is too wide for its area gets handled
 #[derive(Debug, Clone, Copy, Default)]
@@ -12,13 +12,7 @@ pub struct Rules {
 }
 
 pub fn measure(content: &str, font: FontRef<'static>, size: f32) -> f32 {
-    let mut total = 0.0;
-
-    for letter in content.chars() {
-        total += font::measure_letter(font, letter, size).advance;
-    }
-
-    total
+    layout::lay_out(font, content, size).width
 }
 
 // the height of one line, from the top of the tallest letter to the bottom of the lowest
@@ -126,26 +120,22 @@ fn elide(line: &str, font: FontRef<'static>, size: f32, width: f32) -> String {
 
 // where the letters' ink starts and ends, counted from the pen's starting point
 pub fn ink(content: &str, font: FontRef<'static>, size: f32) -> (f32, f32) {
-    let mut pen = 0.0;
+    let line = layout::lay_out(font, content, size);
 
     let mut left = f32::MAX;
     let mut right = f32::MIN;
 
-    for letter in content.chars() {
-        let measured = font::measure_letter(font, letter, size);
-
+    for letter in &line.letters {
         // a space has no ink, only an advance
-        if let Some(bounds) = bounds(measured.font, measured.id) {
-            left = left.min(pen + bounds.min.x * measured.units);
-            right = right.max(pen + bounds.max.x * measured.units);
+        if let Some(bounds) = bounds(letter.font, letter.id) {
+            left = left.min(letter.x + bounds.min.x * letter.units);
+            right = right.max(letter.x + bounds.max.x * letter.units);
         }
-
-        pen += measured.advance;
     }
 
     // nothing but spaces is as wide as its advance
     if left > right {
-        return (0.0, pen);
+        return (0.0, line.width);
     }
 
     (left, right)

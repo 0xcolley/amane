@@ -5,6 +5,7 @@ mod geometry;
 mod gpu;
 mod gradient;
 pub mod image;
+pub mod layout;
 pub mod letter;
 mod outline;
 mod path;

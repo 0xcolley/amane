@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use swash::FontRef;
 
-use crate::graphics::{Area, BezierPath, Color, Outline, Renderer, Transform, font};
+use crate::graphics::{Area, BezierPath, Color, Outline, Renderer, Transform, font, layout};
 
 use super::Command;
 
@@ -33,8 +33,9 @@ impl Renderer {
     }
 
     /*
-     * the line starts on a whole pixel and every letter keeps its rounded
-     * distance from that start, so a moving line never shimmers apart
+     * the line starts on a whole pixel and every letter keeps its distance
+     * from that start to a quarter pixel, so letters are spaced as the font
+     * means them and a moving line never shimmers apart
      */
     fn text_pictures(
         &mut self,
@@ -51,22 +52,19 @@ impl Renderer {
         let line_x = start.0.round();
         let baseline = (start.1 + ascent).round();
 
-        let mut pen = 0.0;
+        let line = layout::lay_out(font, content, pixel_size);
 
-        for letter in content.chars() {
-            let measured = font::measure_letter(font, letter, pixel_size);
-
-            let letter_x = line_x + f32::round(pen);
-
-            pen += measured.advance;
+        for letter in &line.letters {
+            let (whole, quarter) = layout::split_quarters(letter.x);
 
             self.commands.push(Command::Glyph {
-                font: measured.font,
-                id: measured.id,
+                font: letter.font,
+                id: letter.id,
                 size: pixel_size,
+                quarter,
                 color,
-                x: letter_x,
-                y: baseline,
+                x: line_x + whole,
+                y: baseline - letter.y.round(),
             });
         }
     }
@@ -83,25 +81,25 @@ impl Renderer {
 
         let baseline = area.y + ascent;
 
-        let mut pen_x = area.x;
+        let line = layout::lay_out(font, content, size);
 
-        for letter in content.chars() {
-            let measured = font::measure_letter(font, letter, size);
-
-            let letter_x = pen_x;
-
-            pen_x += measured.advance;
-
+        for letter in &line.letters {
             // a space has no outline but still moves the pen
-            let Some(path) = outline(measured.font, measured.id) else {
+            let Some(path) = outline(letter.font, letter.id) else {
                 continue;
             };
 
-            let face_units = measured.units;
+            let face_units = letter.units;
 
             // fonts point y upward, the screen points it downward
-            let letter_transform =
-                Transform::from_row(face_units, 0.0, 0.0, -face_units, letter_x, baseline);
+            let letter_transform = Transform::from_row(
+                face_units,
+                0.0,
+                0.0,
+                -face_units,
+                area.x + letter.x,
+                baseline - letter.y,
+            );
             let transform = letter_transform.post_concat(self.transform);
 
             self.commands.push(Command::Fill {

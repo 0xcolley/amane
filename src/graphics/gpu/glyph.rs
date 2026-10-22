@@ -2,10 +2,8 @@ use vello::Scene;
 use vello::kurbo::Affine;
 use vello::peniko::{Blob, ImageAlphaType, ImageBrush, ImageData, ImageFormat, ImageQuality};
 
-use swash::FontRef;
-
 use crate::graphics::Color;
-use crate::graphics::letter;
+use crate::graphics::letter::{self, LetterPicture};
 
 use super::Gpu;
 
@@ -34,25 +32,25 @@ impl Glyph {
     }
 }
 
-// the font, the letter, the size and the color, which all change the pixels
-pub(super) type GlyphKey = (u64, u16, u32, u32);
+// the font, the letter, the size, the quarter pixels it is moved and the color, which all change the pixels
+pub(super) type GlyphKey = (u64, u16, u32, u8, u32);
 
 impl Gpu {
-    #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_glyph(
         &mut self,
         scene: &mut Scene,
-        font: FontRef<'static>,
-        id: u16,
-        size: f32,
+        picture: LetterPicture,
         color: Color,
         x: f32,
         y: f32,
     ) {
+        let (font, id, size, quarter) = picture.key();
+
         let key = (
-            font.key.value(),
+            font,
             id,
-            size.to_bits(),
+            size,
+            quarter,
             u32::from_be_bytes([color.r, color.g, color.b, color.a]),
         );
 
@@ -63,7 +61,7 @@ impl Gpu {
         let glyph = self
             .glyphs
             .entry(key)
-            .or_insert_with(|| rasterize(font, id, size, color));
+            .or_insert_with(|| rasterize(picture, color));
 
         // a space has no pixels
         let Some(glyph) = glyph else {
@@ -79,16 +77,15 @@ impl Gpu {
     }
 }
 
-fn rasterize(font: FontRef<'static>, id: u16, size: f32, color: Color) -> Option<Glyph> {
-    let letter = letter::rasterize(font, id, size)?;
+fn rasterize(picture: LetterPicture, color: Color) -> Option<Glyph> {
+    let letter = letter::rasterize(picture)?;
 
     let mut pixels = Vec::with_capacity(letter.coverage.len() * 4);
 
     for amount in letter.coverage {
-        let color_alpha = u16::from(color.a);
-        let coverage = u16::from(amount);
+        let coverage = letter::lift(f32::from(amount) / 255.0, color);
 
-        let alpha = (color_alpha * coverage / 255) as u8;
+        let alpha = (f32::from(color.a) * coverage).round() as u8;
 
         pixels.extend([color.r, color.g, color.b, alpha]);
     }

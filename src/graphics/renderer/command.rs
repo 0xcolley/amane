@@ -7,11 +7,15 @@ use swash::FontRef;
 use crate::graphics::{Area, BezierPath, Cap, Color, Corners, Gradient, Transform};
 
 pub enum Command {
-    // one letter as a picture, at a whole device pixel; x and y are where its baseline starts
+    /*
+     * one letter as a picture, at a whole device pixel; x and y are where its
+     * baseline starts, and the letter is drawn this many quarter pixels right of x
+     */
     Glyph {
         font: FontRef<'static>,
         id: u16,
         size: f32,
+        quarter: u8,
         color: Color,
         x: f32,
         y: f32,

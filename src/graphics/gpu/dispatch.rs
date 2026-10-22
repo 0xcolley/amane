@@ -1,6 +1,7 @@
 use vello::Scene;
 use vello::wgpu::Texture;
 
+use crate::graphics::letter::LetterPicture;
 use crate::graphics::renderer::Command;
 
 use super::{Gpu, gradient, shadow, shape};
@@ -28,10 +29,20 @@ impl Gpu {
                 font,
                 id,
                 size,
+                quarter,
                 color,
                 x,
                 y,
-            } => self.draw_glyph(scene, font, id, size, color, x, y),
+            } => {
+                let picture = LetterPicture {
+                    font,
+                    id,
+                    size,
+                    quarter,
+                };
+
+                self.draw_glyph(scene, picture, color, x, y)
+            }
 
             Command::Fill {
                 path,

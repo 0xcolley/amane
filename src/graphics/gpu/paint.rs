@@ -3,6 +3,7 @@ use vello::kurbo::Affine;
 use vello::peniko::{Fill, ImageData, Mix};
 use vello::wgpu::Texture;
 
+use crate::graphics::letter::LetterPicture;
 use crate::graphics::renderer::Command;
 use crate::graphics::{Area, Corners, Transform};
 
@@ -197,12 +198,25 @@ impl Gpu {
                 font,
                 id,
                 size,
+                quarter,
                 color,
                 x,
                 y,
             } => self
                 .quads
-                .letter(&self.queue, font, id, size, color, x, y, clips),
+                .letter(
+                    &self.queue,
+                    LetterPicture {
+                        font,
+                        id,
+                        size,
+                        quarter,
+                    },
+                    color,
+                    x,
+                    y,
+                    clips,
+                ),
 
             Command::Image {
                 image,

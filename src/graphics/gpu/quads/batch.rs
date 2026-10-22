@@ -1,6 +1,6 @@
 use vello::wgpu::{Device, Queue};
 
-use swash::FontRef;
+use crate::graphics::letter::LetterPicture;
 
 use crate::graphics::gpu::picture;
 use crate::graphics::image::Bitmap;
@@ -56,19 +56,16 @@ impl Quads {
     }
 
     // x and y are where the letter's baseline starts, on a whole pixel
-    #[allow(clippy::too_many_arguments)]
     pub fn letter(
         &mut self,
         queue: &Queue,
-        font: FontRef<'static>,
-        id: u16,
-        size: f32,
+        picture: LetterPicture,
         color: Color,
         x: f32,
         y: f32,
         clips: Clips,
     ) {
-        let Some(letter) = self.atlas.letter(queue, font, id, size) else {
+        let Some(letter) = self.atlas.letter(queue, picture) else {
             return;
         };
 

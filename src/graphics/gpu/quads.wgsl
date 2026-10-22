@@ -98,6 +98,9 @@ fn rounded_rectangle(point: vec2<f32>, rect: vec4<f32>, radius: vec4<f32>) -> f3
     return inside + outside - safe_radius;
 }
 
+// how far white letters' edges are lifted, the same as letter::LIFT
+const LIFT: f32 = 0.2;
+
 // one pixel of soft edge
 fn coverage(distance: f32) -> f32 {
     return clamp(0.5 - distance, 0.0, 1.0);
@@ -124,6 +127,11 @@ fn fragment(corner: Corner) -> @location(0) vec4<f32> {
 
     if quad.shape.w == 1.0 {
         amount = textureLoad(atlas, vec2<i32>(floor(corner.source)), 0).r;
+
+        // light letters get their soft edges lifted, as letter::lift does
+        let light = dot(quad.color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+
+        amount = pow(amount, 1.0 - LIFT * light);
     } else {
         amount = coverage(rounded_rectangle(corner.point, quad.rect, quad.radius));
 
