@@ -1,3 +1,5 @@
+use vello::kurbo::{BezPath, PathEl, Point};
+
 // one step of a path, in the path's own coordinates
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Segment {
@@ -45,6 +47,48 @@ impl PathBuilder {
 
     pub fn close(&mut self) {
         self.segments.push(Segment::Close);
+    }
+
+    // the steps an svg path's d attribute describes; data that can't be read adds nothing
+    pub fn svg(&mut self, data: &str) {
+        let Ok(path) = BezPath::from_svg(data) else {
+            return;
+        };
+
+        let point = |point: Point| (point.x as f32, point.y as f32);
+
+        for element in path.elements() {
+            match *element {
+                PathEl::MoveTo(to) => {
+                    let (x, y) = point(to);
+
+                    self.move_to(x, y);
+                }
+
+                PathEl::LineTo(to) => {
+                    let (x, y) = point(to);
+
+                    self.line_to(x, y);
+                }
+
+                PathEl::QuadTo(handle, to) => {
+                    let (handle_x, handle_y) = point(handle);
+                    let (x, y) = point(to);
+
+                    self.quad_to(handle_x, handle_y, x, y);
+                }
+
+                PathEl::CurveTo(first, second, to) => {
+                    let (first_x, first_y) = point(first);
+                    let (second_x, second_y) = point(second);
+                    let (x, y) = point(to);
+
+                    self.cubic_to(first_x, first_y, second_x, second_y, x, y);
+                }
+
+                PathEl::ClosePath => self.close(),
+            }
+        }
     }
 
     // a path with no steps draws nothing, so there is no path to hand back
@@ -123,4 +167,48 @@ fn direction_at(angle: f32) -> (f32, f32) {
     let radians = f32::to_radians(angle);
 
     (f32::cos(radians), f32::sin(radians))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_svg_path_data() {
+        let mut builder = PathBuilder::new();
+
+        builder.svg("M 2 4 L 10 4 C 10 6 8 8 6 8 Z");
+
+        let path = builder.finish().expect("failed to read the test path");
+
+        assert_eq!(
+            path.segments,
+            vec![
+                Segment::MoveTo(2.0, 4.0),
+                Segment::LineTo(10.0, 4.0),
+                Segment::CubicTo(10.0, 6.0, 8.0, 8.0, 6.0, 8.0),
+                Segment::Close,
+            ]
+        );
+    }
+
+    #[test]
+    fn relative_steps_add_up() {
+        let mut builder = PathBuilder::new();
+
+        builder.svg("m2 4 h8 v4");
+
+        let path = builder.finish().expect("failed to read the test path");
+
+        assert_eq!(path.segments[2], Segment::LineTo(10.0, 8.0));
+    }
+
+    #[test]
+    fn unreadable_data_adds_nothing() {
+        let mut builder = PathBuilder::new();
+
+        builder.svg("M 2 4 L nonsense");
+
+        assert!(builder.finish().is_none());
+    }
 }

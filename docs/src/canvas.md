@@ -39,7 +39,7 @@ fn ring(value: f32) -> Canvas {
 | `Circle` | `.center(x, y)`, `.radius(r)` | middle of the canvas, as big as fits |
 | `Arc` | `.center(x, y)`, `.radius(r)`, `.start(degrees)`, `.sweep(degrees)` | middle of the canvas, as big as fits, a full turn |
 | `Line` | `.from(x, y)`, `.to(x, y)` | from `(0, 0)` to `(0, 0)` |
-| `Path` | `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.arc`, `.close` | empty |
+| `Path` | `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.arc`, `.close`, `.svg`, `.view_box` | empty |
 
 Arc angles are in degrees. `0` points straight up, and angles grow clockwise. A negative sweep goes counterclockwise. `Path::arc` uses the same angles.
 
@@ -105,6 +105,22 @@ fn graph(history: &[f32]) -> Canvas {
 ```
 
 `y` grows downward, so a value of 1 is drawn at `y = 0`, the top.
+
+## Icons from SVG path data
+
+`.svg` adds the steps from an SVG path's `d` attribute, so an icon can be copied straight out of an `.svg` file. `.view_box` says which part of the path's own coordinates fills the canvas, like the file's `viewBox`. The icon then fits a canvas of any size, keeps its shape, and sits in the middle:
+
+```rust,ignore
+// a plus drawn on a 24 by 24 grid, filling a 16 pixel canvas
+let plus = Path::new()
+    .svg("M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z")
+    .view_box(0.0, 0.0, 24.0, 24.0)
+    .fill("#cdd6f4");
+
+Canvas::new().width(16.0).height(16.0).shapes(shapes![plus])
+```
+
+Data that can't be read adds nothing, so the path draws nothing. Without `.view_box`, the numbers are canvas pixels, like every other step.
 
 ## Example: a gauge
 

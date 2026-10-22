@@ -184,6 +184,7 @@ use amane::*;
 | `Arc::new().center(x, y).radius(r).start(deg).sweep(deg)` | 0 is up, clockwise |
 | `Line::new().from(x, y).to(x, y)` | a straight line |
 | `Path::new().move_to(x, y).line_to(x, y)` | also `quad_to`, `cubic_to`, `arc`, `close` |
+| `Path::new().svg(d).view_box(x, y, w, h)` | an SVG path's data, fitted to the canvas |
 | `.fill(color)` | paints the inside |
 | `.stroke(4.0, color)` | draws the outline |
 | `.cap(Cap::Round)` | `Butt` (default), `Round`, `Square` |
