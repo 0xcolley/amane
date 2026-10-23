@@ -1,7 +1,11 @@
 pub mod focus;
+mod gesture;
+pub mod modifiers;
 mod pointer;
 mod target;
 
+pub use gesture::{Phase, Pinch, Recent, Swipe};
+pub use modifiers::Modifiers;
 pub use pointer::Pointer;
 pub use target::{Handlers, KeyHandler, Target, clip};
 
@@ -29,6 +33,9 @@ pub enum Key {
 
     Backspace,
 
+    // deletes the letter after the cursor
+    Delete,
+
     Space,
 
     Up,
@@ -42,6 +49,9 @@ pub enum Key {
     Home,
 
     End,
+
+    // a letter or digit pressed with Ctrl held, in lower case: Control('v') for Ctrl+V
+    Control(char),
 
     // a key amane has no name for yet
     Other,
@@ -65,6 +75,25 @@ pub struct Scroll {
 
     // positive scrolls down
     pub y: f32,
+
+    // what made it, so fingers can glide on after they lift and a wheel steps
+    pub source: ScrollSource,
+
+    // the fingers lifted; x and y are usually 0 then
+    pub stop: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ScrollSource {
+    // a mouse wheel, in steps
+    #[default]
+    Wheel,
+
+    // fingers on a touchpad, which ends with a stop
+    Finger,
+
+    // anything else that moves smoothly, like a trackpoint
+    Continuous,
 }
 
 // the pointer's look while it is over a widget

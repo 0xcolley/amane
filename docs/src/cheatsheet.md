@@ -126,10 +126,16 @@ use amane::*;
 | Code | Called with |
 |---|---|
 | `.on_click(\|button\| ...)` | `Button::Left`, `Right`, `Middle` |
+| `.on_press(\|button\| ...)` | as the button goes down |
+| `.on_release(\|button\| ...)` | as the pressed button goes up, wherever the pointer is |
 | `.on_hover(\|inside\| ...)` | `true` on enter, `false` on leave |
-| `.on_scroll(\|scroll\| ...)` | `Scroll { x, y }` in lines, positive `y` is down |
+| `.on_scroll(\|scroll\| ...)` | `Scroll { x, y, source, stop }`, `x` and `y` in lines, positive `y` is down |
 | `.on_move(\|point\| ...)` | `Point { x, y }` from the top-left corner |
 | `.on_drag(\|point\| ...)` | `Point`, from a left press until release |
+| `.on_drag_end(\|\| ...)` | once the drag's button goes up |
+| `.on_swipe(\|swipe\| ...)` | `Swipe { phase, fingers, x, y, speed }`, two fingers sideways or more |
+| `.on_pinch(\|pinch\| ...)` | `Pinch { phase, fingers, scale, rotation, x, y }` |
+| `modifiers()` | `Modifiers { ctrl, shift, alt, logo }` held now |
 | `.cursor(Pointer)` | `Default`, `Pointer`, `Text`, `Grab`, `Grabbing`, `Move`, `NotAllowed`, `Wait`, `Crosshair`, `Resize...` |
 
 ## Text
@@ -170,7 +176,7 @@ use amane::*;
 
 | Code | Does |
 |---|---|
-| `ScrollArea::new("id", child)` | scrolls `child` vertically. The name keeps its position. |
+| `ScrollArea::new("id", child)` | scrolls `child` vertically, gliding after a flick. The name keeps its position. |
 | `.width(size)`, `.height(size)` | `Parent` by default |
 
 ## Canvas and shapes

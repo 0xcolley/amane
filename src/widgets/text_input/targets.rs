@@ -1,9 +1,11 @@
 use std::rc::Rc;
 
 use crate::graphics::Area;
-use crate::input::{Cursor, Handlers, KeyHandler, Target, focus};
+use crate::input::focus::{self, FocusHandler};
+use crate::input::{Cursor, Handlers, Target, modifiers};
 use crate::{Button, Key};
 
+use super::field::Edit;
 use super::{TextHandler, TextInput, fields};
 
 pub fn collect_targets(text_input: &TextInput, area: Area, targets: &mut Vec<Target>) {
@@ -28,7 +30,7 @@ pub fn collect_targets(text_input: &TextInput, area: Area, targets: &mut Vec<Tar
     targets.push(Target::new(area, handlers));
 }
 
-fn key_handler(text_input: &TextInput) -> KeyHandler {
+fn key_handler(text_input: &TextInput) -> FocusHandler {
     let id = text_input.id;
 
     let on_change = text_input.on_change.clone();
@@ -36,8 +38,18 @@ fn key_handler(text_input: &TextInput) -> KeyHandler {
     let password = text_input.password;
 
     let on_key = move |key: Key| match key {
-        Key::Enter => submit(id, on_submit.as_ref(), password),
-        Key::Escape => focus::clear(),
+        Key::Enter => {
+            submit(id, on_submit.as_ref(), password);
+
+            true
+        }
+
+        Key::Escape => {
+            focus::clear();
+
+            true
+        }
+
         _ => edit(id, key, on_change.as_ref()),
     };
 
@@ -56,22 +68,21 @@ fn submit(id: &'static str, on_submit: Option<&TextHandler>, password: bool) {
     }
 }
 
-fn edit(id: &'static str, key: Key, on_change: Option<&TextHandler>) {
+// returns whether the key meant anything to a text input
+fn edit(id: &'static str, key: Key, on_change: Option<&TextHandler>) -> bool {
     let mut field = fields::get(id);
 
-    let changed = field.apply(key);
+    let edit = field.apply(key, modifiers::modifiers().ctrl);
     let text = field.text.clone();
 
     // stored before the handler runs, so it reads the new text
     fields::set(id, field);
 
-    if !changed {
-        return;
+    if edit == Edit::Changed
+        && let Some(on_change) = on_change
+    {
+        on_change(text);
     }
 
-    let Some(on_change) = on_change else {
-        return;
-    };
-
-    on_change(text);
+    edit != Edit::Unused
 }

@@ -1,13 +1,13 @@
 use smithay_client_toolkit::seat::keyboard::{
-    KeyEvent, KeyboardHandler, Keysym, Modifiers, RawModifiers,
+    self, KeyEvent, KeyboardHandler, Keysym, RawModifiers,
 };
 use wayland_client::{
     Connection, QueueHandle,
     protocol::{wl_keyboard::WlKeyboard, wl_surface::WlSurface},
 };
 
-use crate::Key;
-use crate::input::focus;
+use crate::input::{focus, modifiers};
+use crate::{Key, Modifiers};
 
 use super::WaylandState;
 
@@ -39,6 +39,9 @@ impl KeyboardHandler for WaylandState {
         // keys stop arriving, so no text input can stay focused
         focus::clear();
 
+        // nor can anything stay held; the compositor sends them again on the way back in
+        modifiers::set(Modifiers::default());
+
         self.request_frame_on(surface);
     }
 
@@ -50,34 +53,10 @@ impl KeyboardHandler for WaylandState {
         _: u32,
         event: KeyEvent,
     ) {
-        let Some(surface) = self.keyboard_focus.clone() else {
-            return;
-        };
-
-        let key = to_key(&event);
-
-        // a focused text input takes the key before the window's on_key sees it
-        if focus::send(key) {
-            self.request_frame_on(&surface);
-
-            return;
-        }
-
-        let Some(window) = self.window(&surface) else {
-            return;
-        };
-
-        let Some(on_key) = &window.on_key else {
-            return;
-        };
-
-        on_key(key);
-
-        // a service the handler changed wakes its own readers, this window redraws for the rest
-        self.request_frame_on(&surface);
+        self.send_key(to_key(&event));
     }
 
-    // only sent to keyboards made with key repeat, which this one is not
+    // repeats come through the callback the keyboard was made with instead
     fn repeat_key(
         &mut self,
         _: &Connection,
@@ -104,19 +83,84 @@ impl KeyboardHandler for WaylandState {
         _: &QueueHandle<Self>,
         _: &WlKeyboard,
         _: u32,
-        _: Modifiers,
+        held: keyboard::Modifiers,
         _: RawModifiers,
         _: u32,
     ) {
+        modifiers::set(Modifiers {
+            ctrl: held.ctrl,
+            shift: held.shift,
+            alt: held.alt,
+            logo: held.logo,
+        });
+    }
+}
+
+impl WaylandState {
+    // a key held down, sent again at the compositor's repeat rate
+    pub fn repeat(&mut self, event: KeyEvent) {
+        let key = to_key(&event);
+
+        // moving and typing repeat; Enter or Escape again would act twice
+        let repeats = matches!(
+            key,
+            Key::Character(_)
+                | Key::Space
+                | Key::Backspace
+                | Key::Delete
+                | Key::Left
+                | Key::Right
+                | Key::Up
+                | Key::Down
+        );
+
+        if repeats {
+            self.send_key(key);
+        }
+    }
+
+    fn send_key(&mut self, key: Key) {
+        let Some(surface) = self.keyboard_focus.clone() else {
+            return;
+        };
+
+        // a focused text input takes the key before the window's on_key sees it
+        if focus::send(key) {
+            self.request_frame_on(&surface);
+
+            return;
+        }
+
+        let Some(window) = self.window(&surface) else {
+            return;
+        };
+
+        let Some(on_key) = &window.on_key else {
+            return;
+        };
+
+        on_key(key);
+
+        // a service the handler changed wakes its own readers, this window redraws for the rest
+        self.request_frame_on(&surface);
     }
 }
 
 fn to_key(event: &KeyEvent) -> Key {
+    // with Ctrl held, letters type invisible control characters, so the key itself is named
+    if modifiers::modifiers().ctrl
+        && let Some(letter) = event.keysym.key_char()
+        && letter.is_alphanumeric()
+    {
+        return Key::Control(letter.to_lowercase().next().unwrap_or(letter));
+    }
+
     match event.keysym {
         Keysym::Return | Keysym::KP_Enter => Key::Enter,
         Keysym::Escape => Key::Escape,
         Keysym::Tab => Key::Tab,
         Keysym::BackSpace => Key::Backspace,
+        Keysym::Delete | Keysym::KP_Delete => Key::Delete,
         Keysym::space => Key::Space,
         Keysym::Up => Key::Up,
         Keysym::Down => Key::Down,

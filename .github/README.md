@@ -24,6 +24,11 @@ Based on MystiaFin/amane at `544cbfc`.
   - The same applies to every widget that measures or draws text, so wrapping, eliding and the text-input caret follow the shaped widths.
 - **`Spring`:** a value pulled toward its target by a spring, set by a response time and a damping, like SwiftUI's. It keeps its speed when the target changes, can overshoot and settle back, and follows drags with `jump` and `fling`. See [Animation](../docs/src/animation.md#springs).
 - **`amane snapshot`:** draws one window of the compiled shell to a PNG without a compositor, after any IPC calls, at any scale, optionally over a picture or a colour that is blurred under its backdrops. `amane::headless()` tells the shell it's being run for a snapshot. See [The amane Command](../docs/src/cli.md#snapshots).
+- **Input:**
+  - **Presses:** `Rectangle::on_press`, `on_release` and `on_drag_end`, so something can sink while it's held and come back up even when let go elsewhere.
+  - **Touchpad:** `Scroll` says whether a wheel or fingers made it and when the fingers lift. `ScrollArea` glides on after a flick, stretches past its ends and springs back. `on_swipe` and `on_pinch` hear two-finger sideways swipes, compositor swipes and pinches, through `pointer-gestures-unstable-v1`.
+  - **Keyboard:** held keys repeat, `amane::modifiers()` reads Ctrl, Shift, Alt and Super, and `Key` gains `Delete` and `Control(char)`. `TextInput` deletes and moves by word with Ctrl, and Ctrl+U clears to the start.
+  - See [Input](../docs/src/input.md) and `examples/gestures.rs`.
 
 ## Support
 

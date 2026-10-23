@@ -1,12 +1,17 @@
+use std::time::Instant;
+
 use smithay_client_toolkit::seat::pointer::{
     AxisScroll, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, CursorIcon, PointerEvent, PointerEventKind,
     PointerHandler,
 };
-use wayland_client::{Connection, QueueHandle, protocol::wl_pointer::WlPointer};
+use wayland_client::{
+    Connection, QueueHandle,
+    protocol::wl_pointer::{AxisRelativeDirection, AxisSource, WlPointer},
+};
 
 use crate::input::PIXELS_PER_LINE;
 use crate::scale::ScaleFactor;
-use crate::{Button, Cursor, Scroll};
+use crate::{Button, Cursor, Point, Scroll, ScrollSource};
 
 use super::WaylandState;
 
@@ -71,34 +76,42 @@ impl WaylandState {
             }
 
             PointerEventKind::Press { button, .. } => {
-                pointer.press();
-
-                // only the left button drags
-                if to_button(*button) != Some(Button::Left) {
-                    return false;
-                }
-
-                pointer.start_drag()
-            }
-
-            PointerEventKind::Release { button, .. } => {
                 // side buttons like back and forward have no amane button yet
                 let Some(button) = to_button(*button) else {
                     return false;
                 };
 
-                if button == Button::Left {
-                    pointer.stop_drag();
-                }
+                let pressed = pointer.press(button);
 
-                pointer.release(button)
+                // only the left button drags
+                let dragged = button == Button::Left && pointer.start_drag();
+
+                pressed || dragged
+            }
+
+            PointerEventKind::Release { button, .. } => {
+                let Some(button) = to_button(*button) else {
+                    return false;
+                };
+
+                let ended = button == Button::Left && pointer.stop_drag();
+                let let_go = pointer.let_go(button);
+                let clicked = pointer.release(button);
+
+                ended || let_go || clicked
             }
 
             PointerEventKind::Axis {
                 horizontal,
                 vertical,
+                source,
                 ..
-            } => pointer.scroll(to_scroll(horizontal, vertical, window.scale_factor)),
+            } => {
+                let scroll = to_scroll(horizontal, vertical, *source, window.scale_factor);
+                let moved = fingers_moved(horizontal, vertical, window.scale_factor);
+
+                pointer.scroll(scroll, moved, Instant::now())
+            }
         }
     }
 
@@ -138,10 +151,54 @@ fn to_button(code: u32) -> Option<Button> {
     }
 }
 
-fn to_scroll(horizontal: &AxisScroll, vertical: &AxisScroll, scale_factor: ScaleFactor) -> Scroll {
+fn to_scroll(
+    horizontal: &AxisScroll,
+    vertical: &AxisScroll,
+    source: Option<AxisSource>,
+    scale_factor: ScaleFactor,
+) -> Scroll {
     Scroll {
         x: lines(horizontal, scale_factor),
         y: lines(vertical, scale_factor),
+        source: to_source(source, horizontal, vertical),
+        stop: horizontal.stop || vertical.stop,
+    }
+}
+
+fn to_source(source: Option<AxisSource>, horizontal: &AxisScroll, vertical: &AxisScroll) -> ScrollSource {
+    match source {
+        Some(AxisSource::Finger) => ScrollSource::Finger,
+        Some(AxisSource::Continuous) => ScrollSource::Continuous,
+        Some(_) => ScrollSource::Wheel,
+
+        // a compositor that doesn't say: only a wheel counts in steps
+        None if [horizontal, vertical]
+            .iter()
+            .any(|axis| axis.value120 != 0 || axis.discrete != 0) =>
+        {
+            ScrollSource::Wheel
+        }
+        None => ScrollSource::Continuous,
+    }
+}
+
+/*
+ * how the fingers themselves moved, in logical pixels: natural scrolling
+ * turns the scroll the other way round from the fingers, and says so
+ */
+fn fingers_moved(horizontal: &AxisScroll, vertical: &AxisScroll, scale_factor: ScaleFactor) -> Point {
+    let moved = |axis: &AxisScroll| {
+        let pixels = scale_factor.logical(axis.absolute as f32);
+
+        match axis.relative_direction {
+            Some(AxisRelativeDirection::Inverted) => -pixels,
+            _ => pixels,
+        }
+    };
+
+    Point {
+        x: moved(horizontal),
+        y: moved(vertical),
     }
 }
 
@@ -213,5 +270,45 @@ mod tests {
         assert_eq!(lines(&touchpad, ScaleFactor::default()), 2.0);
         assert_eq!(lines(&wheel, factor), 1.0);
         assert_eq!(lines(&old_wheel, factor), 1.0);
+    }
+
+    #[test]
+    fn the_source_comes_from_the_compositor_or_the_steps() {
+        let still = AxisScroll::default();
+        let wheel = AxisScroll {
+            value120: 120,
+            ..AxisScroll::default()
+        };
+
+        assert_eq!(
+            to_source(Some(AxisSource::Finger), &still, &still),
+            ScrollSource::Finger
+        );
+        assert_eq!(
+            to_source(Some(AxisSource::WheelTilt), &still, &still),
+            ScrollSource::Wheel
+        );
+        assert_eq!(to_source(None, &still, &wheel), ScrollSource::Wheel);
+        assert_eq!(to_source(None, &still, &still), ScrollSource::Continuous);
+    }
+
+    #[test]
+    fn natural_scrolling_turns_the_fingers_back_round() {
+        let natural = AxisScroll {
+            absolute: -30.0,
+            relative_direction: Some(AxisRelativeDirection::Inverted),
+            ..AxisScroll::default()
+        };
+        let plain = AxisScroll {
+            absolute: 30.0,
+            relative_direction: Some(AxisRelativeDirection::Identical),
+            ..AxisScroll::default()
+        };
+
+        let factor = ScaleFactor::default();
+
+        // both had the fingers move right
+        assert_eq!(fingers_moved(&natural, &AxisScroll::default(), factor).x, 30.0);
+        assert_eq!(fingers_moved(&plain, &AxisScroll::default(), factor).x, 30.0);
     }
 }

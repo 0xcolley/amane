@@ -1,6 +1,7 @@
 mod compositor;
 mod dropped;
 mod effect;
+mod gestures;
 mod keyboard;
 mod layer;
 mod lock;
@@ -19,6 +20,7 @@ mod windows;
 use smithay_client_toolkit::reexports::protocols::ext::background_effect::v1::client::ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1;
 use smithay_client_toolkit::reexports::protocols::wp::{
     fractional_scale::v1::client::wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1,
+    pointer_gestures::zv1::client::zwp_pointer_gestures_v1::ZwpPointerGesturesV1,
     viewporter::client::wp_viewporter::WpViewporter,
 };
 use smithay_client_toolkit::{
@@ -26,7 +28,10 @@ use smithay_client_toolkit::{
     data_device_manager::{DataDeviceManagerState, data_device::DataDevice},
     delegate_dispatch2, delegate_registry,
     output::OutputState,
-    reexports::{calloop::EventLoop, calloop_wayland_source::WaylandSource},
+    reexports::{
+        calloop::{EventLoop, LoopHandle},
+        calloop_wayland_source::WaylandSource,
+    },
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{SeatState, pointer::ThemedPointer},
@@ -75,6 +80,14 @@ struct WaylandState {
 
     // blur behind glass, none when the compositor lacks ext-background-effect
     background_effect: Option<ExtBackgroundEffectManagerV1>,
+
+    // touchpad gestures for the pointer, and the window the last one began over
+    pointer_gestures: Option<ZwpPointerGesturesV1>,
+    gestures: Option<gestures::Gestures>,
+    gesture_surface: Option<WlSurface>,
+
+    // held keys repeat on a timer in the event loop, none until the loop exists
+    loop_handle: Option<LoopHandle<'static, WaylandState>>,
 
     /*
      * the lock screen's view, what asks the compositor for a lock (kept, so
@@ -136,6 +149,7 @@ impl WaylandApp {
         let fractional_scale = globals.bind(&qh, 1..=1, ()).ok();
         let viewporter = globals.bind(&qh, 1..=1, ()).ok();
         let background_effect = globals.bind(&qh, 1..=1, ()).ok();
+        let pointer_gestures = globals.bind(&qh, 1..=3, ()).ok();
 
         let data_device_manager = DataDeviceManagerState::bind(&globals, &qh).ok();
 
@@ -162,6 +176,12 @@ impl WaylandApp {
             viewporter,
 
             background_effect,
+
+            pointer_gestures,
+            gestures: None,
+            gesture_surface: None,
+
+            loop_handle: None,
 
             lock_view,
             lock_state: None,
@@ -206,6 +226,9 @@ impl WaylandApp {
         }
 
         wake::insert(&event_loop.handle());
+
+        // keyboards arrive while the loop runs, after this
+        state.loop_handle = Some(event_loop.handle());
 
         Self { state, event_loop }
     }

@@ -3,13 +3,33 @@ use std::rc::Rc;
 
 use crate::graphics::Area;
 use crate::input::{Cursor, Target, clip};
-use crate::{Button, Point, Rectangle, Scroll};
+use crate::{Button, Pinch, Point, Rectangle, Scroll, Swipe};
 
 use super::{child, transform};
 
 impl Rectangle {
     pub fn on_click(mut self, handler: impl Fn(Button) + 'static) -> Self {
         self.handlers.click = Some(Rc::new(handler));
+
+        self
+    }
+
+    /*
+     * runs as soon as a button goes down on the rectangle, before it's
+     * known whether it will be a click; for something that sinks while held
+     */
+    pub fn on_press(mut self, handler: impl Fn(Button) + 'static) -> Self {
+        self.handlers.press = Some(Rc::new(handler));
+
+        self
+    }
+
+    /*
+     * runs when a button pressed on the rectangle goes up again, wherever
+     * the pointer is by then, and when the pointer leaves the window
+     */
+    pub fn on_release(mut self, handler: impl Fn(Button) + 'static) -> Self {
+        self.handlers.release = Some(Rc::new(handler));
 
         self
     }
@@ -33,6 +53,31 @@ impl Rectangle {
      */
     pub fn on_drag(mut self, handler: impl Fn(Point) + 'static) -> Self {
         self.handlers.drag = Some(Rc::new(handler));
+
+        self
+    }
+
+    // runs once the button that started an on_drag goes up
+    pub fn on_drag_end(mut self, handler: impl Fn() + 'static) -> Self {
+        self.handlers.drag_end = Some(Rc::new(handler));
+
+        self
+    }
+
+    /*
+     * fingers sliding sideways over the rectangle on a touchpad: two fingers
+     * moving more across than up or down (taken from the scrolling under
+     * them), or three or more the compositor passes on
+     */
+    pub fn on_swipe(mut self, handler: impl Fn(Swipe) + 'static) -> Self {
+        self.handlers.swipe = Some(Rc::new(handler));
+
+        self
+    }
+
+    // fingers spreading or closing over the rectangle on a touchpad
+    pub fn on_pinch(mut self, handler: impl Fn(Pinch) + 'static) -> Self {
+        self.handlers.pinch = Some(Rc::new(handler));
 
         self
     }

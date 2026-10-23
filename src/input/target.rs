@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::graphics::{Area, Transform};
-use crate::{Button, Cursor, Key, Point, Scroll};
+use crate::{Button, Cursor, Key, Pinch, Point, Scroll, Swipe};
 
 /*
  * shared, so the hit areas kept after a redraw
@@ -14,15 +14,26 @@ pub type ScrollHandler = Rc<dyn Fn(Scroll)>;
 pub type KeyHandler = Rc<dyn Fn(Key)>;
 pub type PointHandler = Rc<dyn Fn(Point)>;
 pub type DropHandler = Rc<dyn Fn(Vec<PathBuf>)>;
+pub type DoneHandler = Rc<dyn Fn()>;
+pub type SwipeHandler = Rc<dyn Fn(Swipe)>;
+pub type PinchHandler = Rc<dyn Fn(Pinch)>;
 
 #[derive(Clone, Default)]
 pub struct Handlers {
     pub click: Option<ClickHandler>,
+    pub press: Option<ClickHandler>,
+    pub release: Option<ClickHandler>,
     pub hover: Option<HoverHandler>,
     pub scroll: Option<ScrollHandler>,
     pub drag: Option<PointHandler>,
+    pub drag_end: Option<DoneHandler>,
     pub motion: Option<PointHandler>,
     pub drop: Option<DropHandler>,
+    pub swipe: Option<SwipeHandler>,
+    pub pinch: Option<PinchHandler>,
+
+    // fingers resting on the touchpad, which stops a scroll area's glide
+    pub hold: Option<DoneHandler>,
 
     // not a handler, but it belongs to the same spot the pointer is over
     pub cursor: Option<Cursor>,

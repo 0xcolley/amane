@@ -1,13 +1,15 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::Key;
 
-use super::KeyHandler;
+// what a text input does with a key, and whether it had a use for it
+pub type FocusHandler = Rc<dyn Fn(Key) -> bool>;
 
 // the text input that typed keys go to, and what it does with them
 struct Focus {
     id: &'static str,
-    on_key: KeyHandler,
+    on_key: FocusHandler,
 }
 
 thread_local! {
@@ -15,7 +17,7 @@ thread_local! {
     static FOCUS: RefCell<Option<Focus>> = const { RefCell::new(None) };
 }
 
-pub fn set(id: &'static str, on_key: KeyHandler) {
+pub fn set(id: &'static str, on_key: FocusHandler) {
     FOCUS.set(Some(Focus { id, on_key }));
 }
 
@@ -41,8 +43,8 @@ pub fn send(key: Key) -> bool {
         return false;
     };
 
-    on_key(key);
+    let took = on_key(key);
 
     // escape leaves the input and still reaches the window, which may want to close
-    key != Key::Escape
+    took && key != Key::Escape
 }

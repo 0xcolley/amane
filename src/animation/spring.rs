@@ -90,7 +90,12 @@ impl Spring {
 
     // heads for `target` starting at `speed` units a second, like a flick let go of
     pub fn fling(&mut self, target: f32, speed: f32) {
-        self.rebase(Instant::now());
+        self.fling_at(target, speed, Instant::now());
+    }
+
+    // a fling that set off at `now`, for motion timed by its caller
+    pub(crate) fn fling_at(&mut self, target: f32, speed: f32, now: Instant) {
+        self.rebase(now);
         self.speed = speed;
         self.target = target;
     }
@@ -157,7 +162,7 @@ impl Spring {
      * the closed-form solution of a damped spring from where it set off, so
      * it's the same at any frame rate and costs nothing while nothing reads it
      */
-    fn at(&self, now: Instant) -> (f32, f32, bool) {
+    pub(crate) fn at(&self, now: Instant) -> (f32, f32, bool) {
         let elapsed = now.saturating_duration_since(self.started).as_secs_f32();
 
         let (gap, speed) = swing(

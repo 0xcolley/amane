@@ -40,15 +40,15 @@ impl ScrollArea {
     }
 
     // how far the child can move up before its bottom edge meets the area's
-    fn farthest(&self, area: Area) -> f32 {
+    fn room(&self, area: Area) -> offsets::Room {
         let content = self.child.height().resolve(area.height);
 
-        f32::max(content - area.height, 0.0)
+        offsets::Room::new(f32::max(content - area.height, 0.0), area.height)
     }
 
     // the child at its full size, moved up by the offset
     fn child_area(&self, area: Area) -> Area {
-        let offset = offsets::get(self.id).clamp(0.0, self.farthest(area));
+        let offset = offsets::shown(self.id, self.room(area));
 
         let width = self.child.width().resolve(area.width);
         let height = self.child.height().resolve(area.height);

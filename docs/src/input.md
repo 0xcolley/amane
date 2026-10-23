@@ -2,7 +2,7 @@
 
 A bar needs buttons: click a workspace to switch to it, scroll over the volume to change it, click the clock to open a calendar.
 
-This page covers mouse and keyboard input: clicks, hover, scrolling, dragging, the pointer's look, and keys.
+This page covers mouse, touchpad and keyboard input: clicks, presses, hover, scrolling, dragging, swipes and pinches, the pointer's look, and keys.
 
 ## Handling a click
 
@@ -50,14 +50,22 @@ All of these are methods on `Rectangle`:
 | Method | Called | Gets |
 |---|---|---|
 | `on_click` | when a button is pressed and released over the same rectangle | which `Button`: `Left`, `Right`, or `Middle` |
+| `on_press` | as soon as a button goes down on it | the `Button` |
+| `on_release` | when the button pressed on it goes up, wherever the pointer is by then | the `Button` |
 | `on_hover` | when the pointer comes in, and when it goes out | `true` when it comes in, `false` when it goes out |
-| `on_scroll` | for each wheel step or touchpad movement | a `Scroll` with `x` and `y` |
+| `on_scroll` | for each wheel step or touchpad movement | a `Scroll` |
 | `on_move` | on every movement while the pointer is over it | a `Point` |
 | `on_drag` | on a left press, and on every movement until release | a `Point` |
+| `on_drag_end` | once the left button that started `on_drag` goes up | nothing |
+| `on_swipe` | while fingers slide sideways over it on a touchpad | a `Swipe`, see [Touchpad gestures](#touchpad-gestures) |
+| `on_pinch` | while fingers spread or close over it on a touchpad | a `Pinch` |
 
 A `Point` has `x` and `y`, measured in pixels from the rectangle's top-left corner. During `on_drag`, the point keeps coming even after the pointer leaves the rectangle, so it can be negative or bigger than the rectangle. Clamp it.
 
-A `Scroll` is measured in lines, so a mouse wheel and a touchpad move things by the same amount. Positive `y` means scrolling down, and positive `x` means scrolling right.
+A `Scroll` is measured in lines, so a mouse wheel and a touchpad move things by the same amount. Positive `y` means scrolling down, and positive `x` means scrolling right. It also says what made it:
+
+- `source` is `ScrollSource::Wheel` for a mouse wheel's steps, `Finger` for fingers on a touchpad, or `Continuous` for anything else that moves smoothly, like a trackpoint.
+- `stop` is `true` once the fingers lift, usually with `x` and `y` at 0. That's the moment to let something glide on, the way a [Scroll Area](scroll_area.md) does.
 
 ## Passing values into handlers
 
@@ -143,6 +151,118 @@ fn view() -> LayerWindow {
 }
 ```
 
+## Pressing down
+
+`on_click` only runs once the button is let go, too late for something that should sink as it's pressed. `on_press` runs as the button goes down, and `on_release` when it comes up again:
+
+```rust
+use std::time::Duration;
+
+use amane::{App, Center, Full, LayerWindow, Rectangle, Service, Spring, Text};
+
+struct Press {
+    scale: Spring,
+}
+
+impl Service for Press {
+    fn new() -> Self {
+        Self { scale: Spring::snappy(1.0) }
+    }
+
+    fn interval() -> Duration {
+        Duration::from_secs(3600)
+    }
+}
+
+fn main() {
+    App::new().window(view).run();
+}
+
+fn view() -> LayerWindow {
+    let scale = Press::read().scale.value();
+
+    LayerWindow::new().width(200.0).height(80.0).child(
+        Rectangle::new()
+            .width(200.0)
+            .height(80.0)
+            .align_child(Center, Center)
+            .child(
+                Rectangle::new()
+                    .width(160.0)
+                    .height(44.0)
+                    .radius(Full)
+                    .fill("#89b4fa")
+                    .scale(scale)
+                    .on_press(|_| Press::write().scale.to(0.94))
+                    .on_release(|_| Press::write().scale.to(1.0))
+                    .on_click(|_| println!("clicked"))
+                    .align_child(Center, Center)
+                    .child(Text::new("hold me")),
+            ),
+    )
+}
+```
+
+- `on_release` goes to the rectangle that was pressed, even if the pointer has left it, so a held button always comes back up. It also runs if the pointer leaves the window while the button is down, since the window never hears that button go up.
+- Pressed on, moved off, and let go is still not a click. `on_click` only runs when the button goes up over the same rectangle.
+- A rectangle can have `on_press`, `on_release` and `on_click` together. They run in that order.
+
+## Touchpad gestures
+
+Fingers on a touchpad can do more than scroll. `on_swipe` hears fingers sliding sideways together, and `on_pinch` hears them spreading apart or closing in.
+
+### Swipes
+
+Two fingers moving more across than up or down, over a rectangle with `on_swipe`, swipe it instead of scrolling. This is how two fingers go back a page in a browser on macOS. Two fingers moving up or down still scroll, so a list with `on_scroll` inside a swipeable page keeps working. A swipe of three or more fingers arrives too, if the compositor passes it on. niri keeps three-finger swipes and four-finger vertical swipes for itself.
+
+A `Swipe` has:
+
+- `phase`: `Phase::Began` when the fingers start, `Moved` as they go, `Ended` when they lift, or `Cancelled` if the compositor took them back. Undo what a cancelled swipe did.
+- `fingers`: how many fingers.
+- `x` and `y`: how far the fingers have moved since they began, in pixels. Positive is right and down, the way the fingers moved, whichever way scrolling goes.
+- `speed`: how fast they were moving when they lifted, a `Point` in pixels a second. It's 0 on every phase but `Ended`, and 0 then too if the fingers rested before lifting.
+
+A page that follows the fingers and settles once they lift:
+
+```rust,ignore
+fn swiped(swipe: Swipe) {
+    let mut pager = Pager::write();
+    let resting = pager.page as f32 * WIDTH;
+
+    match swipe.phase {
+        // fingers moving left bring in the page on the right
+        Phase::Began | Phase::Moved => pager.offset.jump(resting - swipe.x),
+
+        Phase::Ended => {
+            if swipe.x < -WIDTH / 2.0 || swipe.speed.x < -300.0 {
+                pager.page += 1;
+            }
+
+            let target = pager.page as f32 * WIDTH;
+
+            // carries on at the fingers' speed, so it doesn't stall as they lift
+            pager.offset.fling(target, -swipe.speed.x);
+        }
+
+        Phase::Cancelled => pager.offset.to(resting),
+    }
+}
+```
+
+`offset` is a [`Spring`](animation.md#springs). `jump` keeps it under the fingers and `fling` lets it go at their speed. The full version, with lists that glide inside each page, is `examples/gestures.rs`.
+
+A swipe stays with the rectangle it began over until the fingers lift, wherever the pointer goes.
+
+### Pinches
+
+A `Pinch` has the same `phase` and `fingers`, and:
+
+- `scale`: 1 where it began, 2 once the fingers are twice as far apart, 0.5 at half.
+- `rotation`: degrees turned clockwise since it began.
+- `x` and `y`: how far the middle of the fingers has moved, in pixels.
+
+Pinches need the compositor to pass them on. niri does.
+
 ## Changing the pointer
 
 ```rust,ignore
@@ -197,16 +317,38 @@ fn key_pressed(key: Key) {
 `Key` is one of:
 
 - `Character(char)`: a key that types something, already shifted, like `Character('A')`
-- `Enter`, `Escape`, `Tab`, `Backspace`, `Space`
+- `Enter`, `Escape`, `Tab`, `Backspace`, `Delete`, `Space`
 - `Up`, `Down`, `Left`, `Right`, `Home`, `End`
+- `Control(char)`: a letter or digit pressed with Ctrl held, in lower case, like `Control('v')` for Ctrl+V
 - `Other`: any key Amane has no name for yet
+
+### Holding a key
+
+A held key repeats at the rate the compositor sets, usually the one in its keyboard settings. Only keys that make sense again repeat: characters, `Space`, `Backspace`, `Delete`, and the arrows. `Enter`, `Escape`, `Tab`, and `Control` keys run once however long they're held, so holding Enter can't submit twice.
+
+### Modifier keys
+
+`amane::modifiers()` says which modifier keys are held right now, for a handler that does something different with Shift or Ctrl:
+
+```rust,ignore
+use amane::{Button, modifiers};
+
+fn clicked(_: Button) {
+    if modifiers().shift {
+        // select everything up to here
+    }
+}
+```
+
+It returns a `Modifiers` with `ctrl`, `shift`, `alt`, and `logo`, the Super or Windows key. All four are `false` while none of the shell's windows has keyboard focus, since the compositor only tells the focused window.
 
 ### When a text input has focus
 
 A focused `TextInput` takes keys before the window does, because typing should type:
 
-- Letters, `Space`, `Backspace`, `Enter`, `Left`, `Right`, `Home`, and `End` go to the input only.
+- Keys that edit the text, and `Enter`, go to the input only. See [Text Input](text_input.md#keys) for the list.
 - `Up`, `Down`, `Tab`, and `Other` skip the input and go to the window's `on_key`. That's how arrow keys can move through a list while you type in a search box.
+- Keys the input has no use for, like most `Control` keys, go on to the window's `on_key` too.
 - `Escape` takes focus away from the input, and then also goes to the window, which may want to close.
 
 ## Terms
@@ -214,3 +356,5 @@ A focused `TextInput` takes keys before the window does, because typing should t
 - **Handler:** a function Amane calls when an event happens.
 - **Target:** the area a rectangle with handlers took up in the last frame.
 - **Keyboard focus:** the window the compositor sends keys to.
+- **Natural scrolling:** content follows the fingers, so moving them up scrolls down. A `Scroll` is the scroll, and a `Swipe` is the fingers.
+- **Fling:** letting go of something while it moves, so it carries on at that speed.

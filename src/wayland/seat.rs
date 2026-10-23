@@ -33,6 +33,8 @@ impl SeatHandler for WaylandState {
                     )
                     .expect("failed to get pointer");
 
+                self.gestures = self.make_gestures(pointer.pointer());
+
                 self.pointer_device = Some(pointer);
 
                 // files are dropped where the pointer is, so it comes with the pointer
@@ -42,12 +44,20 @@ impl SeatHandler for WaylandState {
             }
 
             Capability::Keyboard => {
-                let keyboard = self
-                    .seat
-                    .get_keyboard(qh, &seat, None)
-                    .expect("failed to get keyboard");
+                // held keys repeat at the rate the compositor gives
+                let keyboard = match self.loop_handle.clone() {
+                    Some(handle) => self.seat.get_keyboard_with_repeat(
+                        qh,
+                        &seat,
+                        None,
+                        handle,
+                        Box::new(|state: &mut WaylandState, _, event| state.repeat(event)),
+                    ),
 
-                self.keyboard_device = Some(keyboard);
+                    None => self.seat.get_keyboard(qh, &seat, None),
+                };
+
+                self.keyboard_device = Some(keyboard.expect("failed to get keyboard"));
             }
 
             _ => {}
@@ -63,6 +73,9 @@ impl SeatHandler for WaylandState {
     ) {
         match capability {
             Capability::Pointer => {
+                // the gestures belong to the pointer, so they go first
+                self.gestures = None;
+
                 if let Some(pointer) = self.pointer_device.take() {
                     pointer.pointer().release();
                 }

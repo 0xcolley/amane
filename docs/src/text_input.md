@@ -115,12 +115,24 @@ Enter doesn't clear the input on its own. Call `set_text` with an empty string i
 
 While an input has focus:
 
-- Letters, `Space`, `Backspace`, `Left`, `Right`, `Home`, and `End` edit the text.
-- `Enter` calls `on_submit`.
-- `Escape` takes focus away, and then also reaches the window's `on_key`.
-- `Up`, `Down`, and `Tab` skip the input and go straight to the window's `on_key`, so a list under a search box can be moved through with the arrow keys.
+| Key | Does |
+|---|---|
+| letters, `Space` | type |
+| `Backspace`, `Delete` | delete the letter before or after the cursor |
+| `Ctrl+Backspace`, `Ctrl+W` | delete the word before the cursor |
+| `Ctrl+Delete` | delete the word after the cursor |
+| `Ctrl+U` | delete everything before the cursor |
+| `Left`, `Right` | move the cursor a letter |
+| `Ctrl+Left`, `Ctrl+Right` | move the cursor a word |
+| `Home`, `End` | move the cursor to the start or the end |
+| `Enter` | call `on_submit` |
+| `Escape` | take focus away, and then also reach the window's `on_key` |
 
-Holding a key down doesn't repeat it yet.
+A word is a run of letters and digits, or a run of other marks like `./`. Spaces between the cursor and the word go with it.
+
+`Up`, `Down`, and `Tab` skip the input and go straight to the window's `on_key`, so a list under a search box can be moved through with the arrow keys. So do keys the input has no use for, like `Ctrl+Q`.
+
+Holding a key repeats it, at the compositor's rate ([Input](input.md#holding-a-key)).
 
 ## Password fields
 
