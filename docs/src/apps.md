@@ -22,7 +22,7 @@ fn view() -> LayerWindow {
         let icon = Rectangle::new().width(24.0).height(24.0);
 
         let icon = match app.icon_path() {
-            Some(path) => icon.fill(Image::contain(path)),
+            Some(path) => icon.fill(Image::icon(path)),
             None => icon,
         };
 

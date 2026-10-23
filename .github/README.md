@@ -29,6 +29,7 @@ Based on MystiaFin/amane at `544cbfc`.
   - **Touchpad:** `Scroll` says whether a wheel or fingers made it and when the fingers lift. `ScrollArea` glides on after a flick, stretches past its ends and springs back. `on_swipe` and `on_pinch` hear two-finger sideways swipes, compositor swipes and pinches, through `pointer-gestures-unstable-v1`.
   - **Keyboard:** held keys repeat, `amane::modifiers()` reads Ctrl, Shift, Alt and Super, and `Key` gains `Delete` and `Control(char)`. `TextInput` deletes and moves by word with Ctrl, and Ctrl+U clears to the start.
   - See [Input](../docs/src/input.md) and `examples/gestures.rs`.
+- **`Image::icon()`:** fits what an icon draws rather than its file, leaving out the file's margin and evening out round and square shapes, so icons from different themes look the same size side by side. See [Images](../docs/src/images.md#even-sizes).
 - **Idle:** `Idle::watch` calls back after a stretch without input and again at the next input, through `ext-idle-notify-v1`, and `Idle::keep_awake` holds the screen awake through `idle-inhibit-unstable-v1`. `Lock::follow_logind()` locks on `loginctl lock-session` and before sleep, holding sleep back until the lock is up. See [Idle](../docs/src/idle.md) and `examples/idle.rs`.
 
 ## Support

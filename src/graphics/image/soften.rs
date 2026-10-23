@@ -76,11 +76,7 @@ mod tests {
         }
 
         let image = soften(
-            Bitmap {
-                width,
-                height: 1,
-                pixels: Arc::new(pixels),
-            },
+            Bitmap::new(width, 1, pixels),
             2,
         );
 

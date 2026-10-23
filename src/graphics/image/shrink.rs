@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use super::Bitmap;
 
 /*
@@ -34,11 +32,7 @@ pub fn to_cover(image: Bitmap, width: u32, height: u32) -> Bitmap {
         }
     }
 
-    Bitmap {
-        width: new_width,
-        height: new_height,
-        pixels: Arc::new(pixels),
-    }
+    Bitmap::new(new_width, new_height, pixels)
 }
 
 // the mean of every channel over the pixels from left to right and top to bottom

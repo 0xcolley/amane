@@ -99,7 +99,7 @@ use amane::*;
 | `.fill(Color::rgb(30, 30, 46))` | a color. Also `Color::rgba`, `Color::BLACK`, `WHITE`, `RED`, `GREEN`, `BLUE`, `TRANSPARENT`. |
 | `.fill(Gradient::linear(90.0, [(0.0, "#a"), (1.0, "#b")]))` | a linear gradient. The angle works like CSS. |
 | `.fill(Gradient::radial([(0.0, "#a"), (1.0, "#b")]))` | a radial gradient |
-| `.fill(Image::cover(path))` | an image. Also `contain` and `stretch`. |
+| `.fill(Image::cover(path))` | an image. Also `contain`, `stretch` and `icon`. |
 | `.fill(Mask)` | cuts a hole in the rectangle around it |
 | `.radius(12.0)` | rounded corners |
 | `.radius(Full)` | a pill or circle |
@@ -205,6 +205,7 @@ use amane::*;
 | `Image::cover(path)` | fills, cuts off the edges |
 | `Image::contain(path)` | shows all of it |
 | `Image::stretch(path)` | fills, squashed to fit |
+| `Image::icon(path)` | an app icon, sized by what it draws, so icons match |
 | `.thumbnail(w, h)` | keeps a small copy |
 | `.blurred(radius)` | blurs it once, when loaded |
 | `Image::loaded(path)` | `true` once it's ready to draw |

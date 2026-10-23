@@ -1,15 +1,17 @@
 mod shrink;
 mod soften;
 mod svg;
+mod visible;
 
 pub use shrink::to_cover;
 pub use soften::soften;
+pub use visible::Visible;
 
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock, Mutex, PoisonError};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock, PoisonError};
 use std::thread;
 
 use png::{ColorType, Decoder, Transformations};
@@ -24,6 +26,9 @@ const PNG_SIGNATURE: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
 const JPEG_SIGNATURE: [u8; 3] = [0xFF, 0xD8, 0xFF];
 
+// pictures up to this many pixels are measured as they decode, in case they're icons
+const MEASURED_PIXELS: u32 = 1024 * 1024;
+
 // rgba pixels with plain, not premultiplied, alpha
 pub struct Bitmap {
     width: u32,
@@ -31,6 +36,9 @@ pub struct Bitmap {
 
     // shared with the gpu, which draws from the same pixels instead of a copy
     pub pixels: Arc<Vec<u8>>,
+
+    // where it draws, measured the first time an icon asks
+    visible: OnceLock<Option<Visible>>,
 }
 
 impl Bitmap {
@@ -46,16 +54,13 @@ impl Bitmap {
             width,
             height,
             pixels: Arc::new(pixels),
+            visible: OnceLock::new(),
         }
     }
 
     // one clear pixel, for a texture slot that has to hold something
     pub fn empty() -> Self {
-        Self {
-            width: 1,
-            height: 1,
-            pixels: Arc::new(vec![0; 4]),
-        }
+        Self::new(1, 1, vec![0; 4])
     }
 
     pub fn width(&self) -> u32 {
@@ -64,6 +69,11 @@ impl Bitmap {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    // the part that shows and how much it fills, none when every pixel is clear
+    pub fn visible(&self) -> Option<Visible> {
+        *self.visible.get_or_init(|| visible::measure(self))
     }
 }
 
@@ -123,6 +133,11 @@ fn decode(key: Key) {
 
     // blurred after shrinking, where there are far fewer pixels to average
     let image = soften::soften(image, *blur);
+
+    // measured here rather than while drawing, for pictures the size of an icon
+    if image.width * image.height <= MEASURED_PIXELS {
+        image.visible();
+    }
 
     LOADED
         .lock()
@@ -186,11 +201,11 @@ fn decode_png(bytes: &[u8]) -> Option<Bitmap> {
 
     pixels.truncate(frame.buffer_size());
 
-    let bitmap = Bitmap {
-        width: frame.width,
-        height: frame.height,
-        pixels: Arc::new(expand(&pixels, frame.color_type)),
-    };
+    let bitmap = Bitmap::new(
+        frame.width,
+        frame.height,
+        expand(&pixels, frame.color_type),
+    );
 
     Some(bitmap)
 }
@@ -233,11 +248,7 @@ fn decode_jpeg(bytes: &[u8]) -> Option<Bitmap> {
 
     let info = decoder.info()?;
 
-    let bitmap = Bitmap {
-        width: u32::from(info.width),
-        height: u32::from(info.height),
-        pixels: Arc::new(pixels),
-    };
+    let bitmap = Bitmap::new(u32::from(info.width), u32::from(info.height), pixels);
 
     Some(bitmap)
 }

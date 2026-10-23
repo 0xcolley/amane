@@ -125,10 +125,7 @@ fn paint_image(fill: &Image, renderer: &mut Renderer, area: Area, radius: Corner
         return;
     };
 
-    let image_width = image.width() as f32;
-    let image_height = image.height() as f32;
-
-    let placement = fill.fit.place(area, image_width, image_height);
+    let placement = fill.fit.place_image(area, &image);
 
     renderer.image(area, radius, image, placement);
 }

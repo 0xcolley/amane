@@ -31,8 +31,9 @@ The image fills the rectangle, follows its rounded corners, and works with `bord
 | `Image::cover(path)` | fills the whole rectangle, cutting off what spills past the edges |
 | `Image::contain(path)` | shows the whole image, leaving the rest of the rectangle empty |
 | `Image::stretch(path)` | fills the rectangle exactly, squashing the image to match |
+| `Image::icon(path)` | fits what the image draws, sized by its shape, so icons look the same size |
 
-`cover` is right for wallpapers and album art. `contain` is right for icons.
+`cover` is right for wallpapers and album art. `icon` is right for app icons, and `contain` for other pictures that must show whole.
 
 ## Formats and paths
 
@@ -94,7 +95,19 @@ The [Apps](apps.md) Service finds each program's icon file for you:
 let icon = Rectangle::new().width(24.0).height(24.0);
 
 let icon = match app.icon_path() {
-    Some(path) => icon.fill(Image::contain(path)),
+    Some(path) => icon.fill(Image::icon(path)),
     None => icon,
 };
 ```
+
+### Even sizes
+
+Icon files don't agree on size. One theme draws to the edge of the file, another leaves a wide transparent margin, and a round icon looks smaller than a square one at the same width. Next to each other in a dock, they look like different sizes.
+
+`Image::icon` evens them out:
+
+- **Margins don't count.** It finds the part of the file that shows (pixels at least 16% opaque, so faint shadows don't count either) and sizes that, centred in the rectangle.
+- **Shapes look alike.** The drawing is scaled until it covers 80% of the rectangle's square, about what a circle that spans it covers. Round icons span the rectangle, square ones sit a little inside it, and both look the same size.
+- **It never spills.** A long, thin drawing stops at the rectangle's edges.
+
+The part that shows is measured once, as the icon loads. An icon that draws nothing is placed like `contain`.
