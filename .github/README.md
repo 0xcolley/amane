@@ -33,6 +33,7 @@ Based on MystiaFin/amane at `544cbfc`.
 - **`Image::icon()`:** fits what an icon draws rather than its file, leaving out the file's margin and evening out round and square shapes, so icons from different themes look the same size side by side. See [Images](../docs/src/images.md#even-sizes).
 - **Idle:** `Idle::watch` calls back after a stretch without input and again at the next input, through `ext-idle-notify-v1`, and `Idle::keep_awake` holds the screen awake through `idle-inhibit-unstable-v1`. `Lock::follow_logind()` locks on `loginctl lock-session` and before sleep, holding sleep back until the lock is up. See [Idle](../docs/src/idle.md) and `examples/idle.rs`.
 - **Text:** `Text::bevel` draws raised, lit letters, with `Bevel::glass()` for frosted glass like macOS 26's lock screen clock; `Text::optical` uses a variable font's cut for the text's size; `Text::center` centres each wrapped line. See [Text](../docs/src/text.md#lit-letters) and `examples/bevel.rs`.
+- **`Lock::since()`:** when the compositor granted the current lock, so a lock screen can tell a new lock from the last one. See [Lock Screen](../docs/src/lock_screen.md).
 
 ## Support
 

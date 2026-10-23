@@ -2,6 +2,7 @@ mod logind;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Instant;
 
 use super::pam::{self, Session};
 use crate::changes;
@@ -26,6 +27,9 @@ pub struct Lock {
 
     // the compositor has granted the lock, until it ends
     locked: bool,
+
+    // when it granted this one
+    since: Option<Instant>,
     attempt: Option<Arc<Session>>,
 }
 
@@ -57,9 +61,17 @@ impl Lock {
         self.locked
     }
 
+    // when the compositor granted this lock, so a lock screen can tell a new lock from the last one
+    pub fn since(&self) -> Option<Instant> {
+        self.since
+    }
+
     pub(crate) fn set_locked(locked: bool) {
         if Self::read().locked != locked {
-            Self::write().locked = locked;
+            let mut lock = Self::write();
+
+            lock.locked = locked;
+            lock.since = locked.then(Instant::now);
         }
     }
 

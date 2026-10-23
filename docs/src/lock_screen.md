@@ -137,6 +137,7 @@ Read the `Pam` Service in your lock view to show information, error messages and
 | `Lock::read().checking()` | authentication is running |
 | `Lock::read().failed()` | the last attempt was rejected or failed |
 | `Lock::read().locked()` | the compositor has granted the lock, and shows only the lock screens |
+| `Lock::read().since()` | when the compositor granted this lock, to tell a new lock from the last one (to play a lock screen's entrance once, say) |
 | `Lock::start()` | locks the session |
 | `Lock::unlock(password)` | checks a password, and unlocks if it's right |
 | `Lock::authenticate(config)` | starts interactive authentication, and unlocks on success |
