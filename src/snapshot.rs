@@ -226,7 +226,10 @@ pub(crate) fn take(
     let (window, frame) = loop {
         let (mut window, _) = frame::run_view(|| found.run(monitor), size.0, size.1, scale_factor);
 
-        size = window_size(&window, monitor, scale_factor);
+        // the compositor sizes a lock screen to the monitor, whatever it asks for
+        if request.window != "lock" {
+            size = window_size(&window, monitor, scale_factor);
+        }
 
         let Some(root) = window.root.take() else {
             return Err(format!("{} has no child to draw", window.namespace));
