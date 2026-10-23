@@ -1,3 +1,4 @@
+mod clipboard;
 mod compositor;
 mod dropped;
 mod effect;
@@ -120,6 +121,9 @@ struct WaylandState {
     data_device_manager: Option<DataDeviceManagerState>,
     data_device: Option<DataDevice>,
 
+    // the clipboard's history and pasting into text inputs
+    data_control: clipboard::DataControl,
+
     // what the pointer was last set to on one of the windows, none after it leaves
     cursor_shown: Option<Cursor>,
 
@@ -168,6 +172,7 @@ impl WaylandApp {
         let idle_inhibit_manager = globals.bind(&qh, 1..=1, ()).ok();
 
         let data_device_manager = DataDeviceManagerState::bind(&globals, &qh).ok();
+        let data_control = clipboard::DataControl::new(globals.bind(&qh, 1..=1, ()).ok());
 
         // windows per monitor are opened once the compositor describes each monitor
         let mut state = WaylandState {
@@ -216,6 +221,8 @@ impl WaylandApp {
             data_device_manager,
             data_device: None,
 
+            data_control,
+
             qh,
 
             running: true,
@@ -250,6 +257,9 @@ impl WaylandApp {
 
         // an Idle::watch before run() has no event loop to wake yet either
         state.update_idle();
+
+        // nor has the history the first views read, and paste needs the device anyway
+        state.update_clipboard();
 
         // keyboards arrive while the loop runs, after this
         state.loop_handle = Some(event_loop.handle());

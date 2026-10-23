@@ -125,6 +125,7 @@ While an input has focus:
 | `Left`, `Right` | move the cursor a letter |
 | `Ctrl+Left`, `Ctrl+Right` | move the cursor a word |
 | `Home`, `End` | move the cursor to the start or the end |
+| `Ctrl+V` | paste the clipboard's text at the cursor ([Clipboard](clipboard.md#pasting-into-a-text-input)) |
 | `Enter` | call `on_submit` |
 | `Escape` | take focus away, and then also reach the window's `on_key` |
 

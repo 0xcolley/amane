@@ -12,6 +12,8 @@ use super::Widget;
 
 use field::Field;
 
+pub(crate) use targets::paste;
+
 // shared, so the key handler kept after a redraw still reaches it
 pub type TextHandler = Rc<dyn Fn(String)>;
 

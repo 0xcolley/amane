@@ -24,6 +24,8 @@ pub use stack::Stack;
 pub use text::Text;
 pub use text_input::TextInput;
 
+pub(crate) use text_input::paste;
+
 pub trait Widget {
     fn width(&self) -> Size;
 

@@ -185,6 +185,29 @@ pub fn read(path: &Path) -> Option<Bitmap> {
     None
 }
 
+// a png's or jpeg's size in pixels, read from its header without decoding it
+pub fn dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
+    if bytes.starts_with(&PNG_SIGNATURE) {
+        let reader = Decoder::new(Cursor::new(bytes)).read_info().ok()?;
+
+        let info = reader.info();
+
+        return Some((info.width, info.height));
+    }
+
+    if bytes.starts_with(&JPEG_SIGNATURE) {
+        let mut decoder = JpegDecoder::new(ZCursor::new(bytes));
+
+        decoder.decode_headers().ok()?;
+
+        let info = decoder.info()?;
+
+        return Some((u32::from(info.width), u32::from(info.height)));
+    }
+
+    None
+}
+
 fn decode_png(bytes: &[u8]) -> Option<Bitmap> {
     let mut decoder = Decoder::new(Cursor::new(bytes));
 

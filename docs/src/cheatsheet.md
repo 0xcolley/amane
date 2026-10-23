@@ -266,6 +266,7 @@ use amane::*;
 | [`Pam`](pam.md) | `active`, `messages`, `prompt`, `result` | `start`, `respond`, `abort` |
 | [`Lock`](lock_screen.md) | `checking`, `failed`, `locked` | `start`, `unlock`, `authenticate`, `abort`, `follow_logind` |
 | [`Idle`](idle.md) | `idle`, `awake` | `watch`, `keep_awake` |
+| [`Clipboard`](clipboard.md) | `clips`, `current` | `copy`, `copy_text`, `remove`, `clear` |
 
 ## Commands, files, IPC, D-Bus
 

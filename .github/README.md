@@ -34,6 +34,7 @@ Based on MystiaFin/amane at `544cbfc`.
 - **Idle:** `Idle::watch` calls back after a stretch without input and again at the next input, through `ext-idle-notify-v1`, and `Idle::keep_awake` holds the screen awake through `idle-inhibit-unstable-v1`. `Lock::follow_logind()` locks on `loginctl lock-session` and before sleep, holding sleep back until the lock is up. See [Idle](../docs/src/idle.md) and `examples/idle.rs`.
 - **Text:** `Text::bevel` draws raised, lit letters, with `Bevel::glass()` for frosted glass like macOS 26's lock screen clock; `Text::optical` uses a variable font's cut for the text's size; `Text::center` centres each wrapped line. See [Text](../docs/src/text.md#lit-letters) and `examples/bevel.rs`.
 - **`Lock::since()`:** when the compositor granted the current lock, so a lock screen can tell a new lock from the last one. See [Lock Screen](../docs/src/lock_screen.md).
+- **Clipboard:** `Clipboard` keeps a history of copied text and pictures through `ext-data-control-v1`, puts clips back with `Clipboard::copy`, leaves out what password managers copy, and offers the last copy again when the program that made it quits. Text inputs paste with `Ctrl+V`. See [Clipboard](../docs/src/clipboard.md) and `examples/clipboard.rs`.
 
 ## Support
 

@@ -53,6 +53,16 @@ impl Field {
         self.text.chars().take(self.cursor).collect()
     }
 
+    // puts text in at the cursor, which ends up after it
+    pub fn insert_text(&mut self, text: &str) -> bool {
+        let at = self.byte_index();
+
+        self.text.insert_str(at, text);
+        self.cursor += text.chars().count();
+
+        !text.is_empty()
+    }
+
     fn insert(&mut self, letter: char) -> bool {
         let at = self.byte_index();
 
@@ -244,6 +254,21 @@ mod tests {
 
         field.apply(Key::Right, true);
         assert_eq!(field.cursor, 5);
+    }
+
+    #[test]
+    fn pastes_at_the_cursor() {
+        let mut field = typed("wi network");
+
+        field.apply(Key::Home, false);
+        field.apply(Key::Right, false);
+        field.apply(Key::Right, false);
+
+        assert!(field.insert_text("-fé"));
+        assert_eq!(field.text, "wi-fé network");
+        assert_eq!(field.cursor, 5);
+
+        assert!(!field.insert_text(""));
     }
 
     #[test]

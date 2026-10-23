@@ -47,6 +47,7 @@
 - [Palette](palette.md)
 - [PAM Authentication](pam.md)
 - [Idle](idle.md)
+- [Clipboard](clipboard.md)
 
 # Talking to the System
 
