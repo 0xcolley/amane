@@ -18,6 +18,7 @@ mod picture;
 mod pool;
 mod present;
 mod quads;
+mod readback;
 mod shade;
 mod shader;
 mod shadow;
@@ -35,14 +36,12 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use vello::peniko::ImageData;
-use vello::wgpu::{
-    BlendState, CommandEncoder, Device, Queue, Surface, SurfaceConfiguration, Texture,
-    TextureFormat,
-};
+use vello::wgpu::{BlendState, CommandEncoder, Device, Queue, Texture, TextureFormat};
 
 use crate::graphics::image::Bitmap;
 
 use pass::Pass;
+use present::Presenter;
 use shader::Shader;
 use shared::Shared;
 
@@ -63,8 +62,8 @@ pub struct Gpu {
     device: Device,
     queue: Queue,
 
-    surface: Surface<'static>,
-    config: SurfaceConfiguration,
+    // what shows the canvas in a window, none for a gpu that only draws offscreen
+    presenter: Option<Presenter>,
 
     // one renderer for every window, see shared.rs
     vello: Rc<RefCell<vello::Renderer>>,
@@ -99,7 +98,6 @@ pub struct Gpu {
     pending: RefCell<Option<CommandEncoder>>,
 
     composite: Pass,
-    present: Pass,
     box_blur: Pass,
     erase: Pass,
 }
@@ -111,21 +109,43 @@ impl Gpu {
 
         let surface = target::create(&instance, display, surface);
 
+        let shared = shared::get(&instance, Some(&surface));
+
+        let config = target::configure(&surface, &shared.adapter);
+
+        let pass = Pass::new(&shared.device, "composite", config.format, None);
+
+        let presenter = Presenter {
+            surface,
+            config,
+            pass,
+        };
+
+        Self::open(shared, Some(presenter))
+    }
+
+    // draws only into textures, for pictures of windows taken without a compositor
+    pub fn offscreen() -> Self {
+        let instance = shared::offscreen_instance();
+
+        let shared = shared::get(&instance, None);
+
+        Self::open(shared, None)
+    }
+
+    fn open(shared: Shared, presenter: Option<Presenter>) -> Self {
         let Shared {
-            adapter,
             device,
             queue,
             vello,
             atlas_drops,
-        } = shared::get(&instance, &surface);
-
-        let config = target::configure(&surface, &adapter);
+            ..
+        } = shared;
 
         // the canvas and the surface hold premultiplied colors
         let over = Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING);
 
         let composite = Pass::new(&device, "composite", TextureFormat::Rgba8Unorm, over);
-        let present = Pass::new(&device, "composite", config.format, None);
         let box_blur = Pass::new(&device, "box_blur", TextureFormat::Rgba8Unorm, None);
         let erase = cut::erase(&device);
 
@@ -135,8 +155,7 @@ impl Gpu {
             device,
             queue,
 
-            surface,
-            config,
+            presenter,
 
             vello,
 
@@ -157,7 +176,6 @@ impl Gpu {
             pending: RefCell::new(None),
 
             composite,
-            present,
             box_blur,
             erase,
         }

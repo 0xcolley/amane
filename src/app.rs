@@ -3,6 +3,7 @@ use crate::allocator;
 use crate::graphics::{GpuSession, font};
 use crate::ipc::IpcHandlers;
 use crate::scale::ScaleFactor;
+use crate::snapshot::{self, Views};
 use crate::wayland::WaylandApp;
 use crate::window::NamedWindow;
 use crate::{LayerWindow, Monitor, Window};
@@ -102,6 +103,33 @@ impl App {
 
         // Created first and dropped last, including when backend startup unwinds.
         let _gpu = GpuSession;
+
+        // `amane snapshot` asks for a picture of one window instead of a running shell
+        if let Some(request) = snapshot::request() {
+            let views = Views {
+                windows: &self.windows,
+                per_monitor: &self.per_monitor,
+                lock: self.lock,
+            };
+
+            let taken = request.and_then(|request| {
+                snapshot::take(&request, &views, &self.handlers, self.scale_factor)
+            });
+
+            match taken {
+                Ok(path) => {
+                    println!("{}", path.display());
+
+                    snapshot::leave(0);
+                }
+
+                Err(error) => {
+                    eprintln!("amane: {error}");
+
+                    snapshot::leave(1);
+                }
+            }
+        }
 
         let mut backend = WaylandApp::new(
             self.windows,

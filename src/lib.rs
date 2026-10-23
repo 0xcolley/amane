@@ -18,6 +18,7 @@ mod placement;
 mod process;
 mod scale;
 mod services;
+mod snapshot;
 mod style;
 mod timing;
 mod wayland;
@@ -43,6 +44,7 @@ pub use layer_window::{
 pub use monitor::Monitor;
 pub use placement::{Align, Center, End, Justify, Padding, Size, Start};
 pub use process::{lines, output, spawn};
+pub use snapshot::headless;
 pub use services::{
     AccessPoint, Action, Apps, Audio, Battery, Bluetooth, BluetoothDevice, Brightness, Cpu,
     DesktopApp, Link, Lock, Media, MediaPlayer, Memory, Network, Notification, Notifications,

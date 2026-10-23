@@ -1,17 +1,29 @@
-use vello::wgpu::{CurrentSurfaceTexture, SurfaceTexture};
+use vello::wgpu::{CurrentSurfaceTexture, Surface, SurfaceConfiguration, SurfaceTexture};
 
 use crate::graphics::renderer::Command;
 
+use super::pass::Pass;
 use super::{Gpu, texture};
 
-impl Gpu {
-    // false when the frame was skipped, so nothing was committed
-    pub fn draw(&mut self, commands: Vec<Command>, width: u32, height: u32) -> bool {
-        if self.config.width != width || self.config.height != height {
-            self.config.width = width;
-            self.config.height = height;
+// a window's swapchain, and the pass that copies the finished canvas into it
+pub(super) struct Presenter {
+    pub surface: Surface<'static>,
+    pub config: SurfaceConfiguration,
+    pub pass: Pass,
+}
 
-            self.surface.configure(&self.device, &self.config);
+impl Gpu {
+    // false when the frame was skipped, so nothing was committed; an offscreen gpu skips every frame
+    pub fn draw(&mut self, commands: Vec<Command>, width: u32, height: u32) -> bool {
+        let Some(presenter) = &mut self.presenter else {
+            return false;
+        };
+
+        if presenter.config.width != width || presenter.config.height != height {
+            presenter.config.width = width;
+            presenter.config.height = height;
+
+            presenter.surface.configure(&self.device, &presenter.config);
 
             // spares and kept results of the old size would never fit again
             self.spare.clear();
@@ -34,13 +46,16 @@ impl Gpu {
 
         let mut encoder = self.take_encoder();
 
-        self.present.run(
-            &self.device,
-            &mut encoder,
-            &texture::view(&canvas),
-            &target,
-            [1.0, 0.0, 0.0, 0.0],
-        );
+        // there since the top, where a gpu without one already stopped
+        if let Some(presenter) = &self.presenter {
+            presenter.pass.run(
+                &self.device,
+                &mut encoder,
+                &texture::view(&canvas),
+                &target,
+                [1.0, 0.0, 0.0, 0.0],
+            );
+        }
 
         self.keep_encoder(encoder);
 
@@ -59,16 +74,18 @@ impl Gpu {
     }
 
     fn next_frame(&mut self) -> Option<SurfaceTexture> {
-        match self.surface.get_current_texture() {
+        let presenter = self.presenter.as_ref()?;
+
+        match presenter.surface.get_current_texture() {
             CurrentSurfaceTexture::Success(frame) => Some(frame),
 
             CurrentSurfaceTexture::Suboptimal(frame) => Some(frame),
 
             // the swapchain no longer fits the surface, a fresh one takes its place
             CurrentSurfaceTexture::Outdated | CurrentSurfaceTexture::Lost => {
-                self.surface.configure(&self.device, &self.config);
+                presenter.surface.configure(&self.device, &presenter.config);
 
-                match self.surface.get_current_texture() {
+                match presenter.surface.get_current_texture() {
                     CurrentSurfaceTexture::Success(frame) => Some(frame),
 
                     _ => None,

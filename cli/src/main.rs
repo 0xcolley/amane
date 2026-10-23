@@ -9,6 +9,7 @@ mod paths;
 mod project;
 mod restart;
 mod run;
+mod snapshot;
 mod target;
 mod watch;
 
@@ -53,6 +54,8 @@ fn main() -> ExitCode {
 
         ["ipc", "call", name, ..] => call::run(name, &arguments[3..]),
 
+        ["snapshot", ..] => snapshot::run(&arguments[1..]),
+
         _ => usage(),
     }
 }
@@ -83,6 +86,7 @@ fn usage() -> ExitCode {
     );
     eprintln!("  amane clean --yes                    the same, without asking first");
     eprintln!("  amane ipc call <name> [arguments...] call a handler in the running shell");
+    eprintln!("  amane snapshot <window> [options]    draw one window to a png, see --help");
 
     ExitCode::FAILURE
 }

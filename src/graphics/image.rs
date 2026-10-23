@@ -2,6 +2,9 @@ mod shrink;
 mod soften;
 mod svg;
 
+pub use shrink::to_cover;
+pub use soften::soften;
+
 use std::any::TypeId;
 use std::collections::HashMap;
 use std::io::Cursor;
@@ -31,6 +34,21 @@ pub struct Bitmap {
 }
 
 impl Bitmap {
+    // four bytes for every pixel, row after row
+    pub fn new(width: u32, height: u32, pixels: Vec<u8>) -> Self {
+        assert_eq!(
+            pixels.len(),
+            (width * height * 4) as usize,
+            "failed to make a bitmap: wrong number of pixels"
+        );
+
+        Self {
+            width,
+            height,
+            pixels: Arc::new(pixels),
+        }
+    }
+
     // one clear pixel, for a texture slot that has to hold something
     pub fn empty() -> Self {
         Self {

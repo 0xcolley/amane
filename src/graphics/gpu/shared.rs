@@ -45,6 +45,17 @@ pub fn instance(display: *mut c_void) -> Instance {
     INSTANCE.with(|instance| instance.get_or_init(|| open_instance(display)).clone())
 }
 
+// without a display the gl backend can only draw offscreen, which is all a picture needs
+pub fn offscreen_instance() -> Instance {
+    INSTANCE.with(|instance| {
+        instance
+            .get_or_init(
+                || Instance::new(InstanceDescriptor::new_without_display_handle_from_env()),
+            )
+            .clone()
+    })
+}
+
 fn open_instance(display: *mut c_void) -> Instance {
     let display = Box::new(Display::new(display));
 
@@ -54,8 +65,12 @@ fn open_instance(display: *mut c_void) -> Instance {
 }
 
 // opened by the first window, with a gpu that can draw to its surface; later windows reuse it
-pub fn get(instance: &Instance, surface: &Surface) -> Shared {
-    SHARED.with_borrow_mut(|shared| shared.get_or_insert_with(|| open(instance, surface)).clone())
+pub fn get(instance: &Instance, surface: Option<&Surface>) -> Shared {
+    SHARED.with_borrow_mut(|shared| {
+        shared
+            .get_or_insert_with(|| open(instance, surface))
+            .clone()
+    })
 }
 
 pub fn clear() {
@@ -63,9 +78,9 @@ pub fn clear() {
     drop(SHARED.with_borrow_mut(Option::take));
 }
 
-fn open(instance: &Instance, surface: &Surface) -> Shared {
+fn open(instance: &Instance, surface: Option<&Surface>) -> Shared {
     let adapter_options = RequestAdapterOptions {
-        compatible_surface: Some(surface),
+        compatible_surface: surface,
         ..RequestAdapterOptions::default()
     };
 

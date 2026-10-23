@@ -15,6 +15,7 @@
 | `amane clean` | Deletes the build output in `~/.cache/amane/project/`. Keeps the compiled shell, so `amane run` still works. Asks before deleting. |
 | `amane clean --yes` | Same as `amane clean`, without asking first. |
 | `amane ipc call <name> [arguments...]` | Calls a handler in the running shell. See [IPC](ipc.md). |
+| `amane snapshot <window> [options]` | Draws one window of the compiled shell to a PNG, without a compositor and without showing it. See [Snapshots](#snapshots). |
 
 ## Where things live
 
@@ -35,6 +36,40 @@ You never edit anything in the cache folder. Deleting it is safe. The next build
 
 ```sh
 amane compile && amane clean --yes
+```
+
+## Snapshots
+
+`amane snapshot` draws one window to a PNG. It runs the shell `amane compile` saved once more, in the background, without connecting to the compositor: the window is laid out and drawn on the GPU and written to a file, and the shell exits. A shell that's already running is left alone. This makes it quick to check a change, or to compare light and dark, without opening anything on screen.
+
+```sh
+amane snapshot amane-bar
+amane snapshot amane-control --ipc "control wifi" --scale 2 -o wifi.png
+amane snapshot lock --over ~/Pictures/wallpaper.jpg
+```
+
+- **`<window>`:** the `namespace` of a layer window, or `lock` for the lock screen. An unknown name lists the ones the shell has.
+- **`-o`, `--out <file>`:** where the PNG goes. `<window>.png` in the current folder by default. The path is printed when it's done.
+- **`--scale <factor>`:** real pixels per logical pixel, `1` by default. Use `2` to look at details.
+- **`--size <width>x<height>`:** the monitor the window is drawn for, `1440x960` by default. Anchors and margins are measured against it.
+- **`--monitor <name>`:** that monitor's name, for views that tell monitors apart.
+- **`--ipc "<name> [arguments]"`:** an [IPC](ipc.md) call made before drawing, for example to open the window or switch its page. It can be repeated, and the calls run in order. Their replies are printed.
+- **`--over <#rrggbb|picture>`:** what's drawn behind the window. A picture is cropped to cover the monitor. Inside the window's backdrops it's blurred, so a backdrop looks roughly like it does under the compositor. Without it, everything outside the window is transparent.
+
+Before drawing, the shell keeps updating the window until nothing has moved and no service has changed for 400 ms, at most 5 seconds. Services and pictures have time to load, and animations finish.
+
+### Skipping side effects
+
+The shell runs for real, so anything it does at startup happens again, such as starting threads that watch something or writing files. `amane::headless()` is true only while taking a snapshot, so the shell can skip those:
+
+```rust,ignore
+fn main() {
+    if !amane::headless() {
+        std::thread::spawn(watch_windows);
+    }
+
+    App::new().window(bar::view).run();
+}
 ```
 
 ## Splitting your shell into files
