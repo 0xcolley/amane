@@ -3,7 +3,7 @@ mod lines;
 use swash::FontRef;
 
 use crate::graphics::{Area, Renderer, font};
-use crate::{Color, Size, Weight};
+use crate::{Bevel, Color, Size, Weight};
 
 use super::Widget;
 
@@ -19,6 +19,14 @@ pub struct Text {
 
     // sized by the letters' own shapes instead of their advance, so an icon centers exactly
     tight: bool,
+
+    bevel: Option<Bevel>,
+
+    // drawn with the font's optical size for this size, if it has one
+    optical: bool,
+
+    // each line in the middle of the width, instead of at its left
+    centered: bool,
 }
 
 impl Text {
@@ -31,6 +39,9 @@ impl Text {
             weight: Weight::Regular,
             rules: Rules::default(),
             tight: false,
+            bevel: None,
+            optical: false,
+            centered: false,
         }
     }
 
@@ -82,6 +93,27 @@ impl Text {
         self
     }
 
+    // large text drawn with the font's display cut, as macOS draws big titles in SF Pro Display
+    pub fn optical(mut self) -> Self {
+        self.optical = true;
+
+        self
+    }
+
+    // raised, lit letters, drawn as one picture; best for large text that rarely changes, like a clock
+    // each line in the middle of the width it's given, for wrapped captions
+    pub fn center(mut self) -> Self {
+        self.centered = true;
+
+        self
+    }
+
+    pub fn bevel(mut self, bevel: Bevel) -> Self {
+        self.bevel = Some(bevel);
+
+        self
+    }
+
     // how tall it is once laid out in this width, for wrapped text whose height depends on it
     pub fn height_in(&self, width: f32) -> f32 {
         let font = self.face();
@@ -92,7 +124,13 @@ impl Text {
     }
 
     fn face(&self) -> FontRef<'static> {
-        font::load_weighted(self.font.as_deref(), self.weight)
+        let face = font::load_weighted(self.font.as_deref(), self.weight);
+
+        if self.optical {
+            font::optical(face, self.size)
+        } else {
+            face
+        }
     }
 }
 
@@ -146,9 +184,20 @@ impl Widget for Text {
         let mut top = area.y;
 
         for line in arranged {
-            let line_area = Area::new(area.x, top, area.width, line_height);
+            let left = if self.centered {
+                (area.width - lines::measure(&line, font, self.size)).max(0.0) / 2.0
+            } else {
+                0.0
+            };
 
-            renderer.text(&line, font, self.size, self.color, line_area);
+            let line_area = Area::new(area.x + left, top, area.width - left, line_height);
+
+            match &self.bevel {
+                Some(bevel) => {
+                    renderer.text_bevel(&line, font, self.size, self.color, line_area, bevel)
+                }
+                None => renderer.text(&line, font, self.size, self.color, line_area),
+            }
 
             top += spacing;
         }

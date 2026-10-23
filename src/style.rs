@@ -1,8 +1,10 @@
+mod bevel;
 mod fill;
 mod image;
 mod radius;
 mod shadow;
 
+pub use bevel::Bevel;
 pub use fill::{Fill, Mask};
 pub use image::Image;
 pub use radius::Radius;

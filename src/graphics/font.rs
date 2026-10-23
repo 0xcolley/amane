@@ -121,6 +121,56 @@ fn open(path: &str, index: u32) -> FontRef<'static> {
  * where a variable font's sliders sit, like its weight;
  * empty means the font's default, which is all a plain font has
  */
+// the same font at the optical size made for text this big, for fonts that have one; whole points only
+static OPTICAL: LazyLock<Mutex<HashMap<(u64, u32), FontRef<'static>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/*
+ * a font with an optical size axis, like Inter's, draws large text with
+ * the tighter spacing and finer details of its display cut. Each size
+ * gets its own key, so the letters it draws are kept apart from the rest
+ */
+pub fn optical(font: FontRef<'static>, size: f32) -> FontRef<'static> {
+    let variations = font.variations();
+
+    let Some(axis) = variations.find_by_tag(swash::tag_from_bytes(b"opsz")) else {
+        return font;
+    };
+
+    let points = size.clamp(axis.min_value(), axis.max_value()).round();
+
+    let key = (font.key.value(), points as u32);
+
+    let mut optical = OPTICAL.lock().unwrap_or_else(PoisonError::into_inner);
+
+    if let Some(sized) = optical.get(&key) {
+        return *sized;
+    }
+
+    // the named style's sliders, with the optical size moved
+    let mut sliders = vec![0; variations.len()];
+
+    for (slider, from) in sliders.iter_mut().zip(coords(font)) {
+        *slider = *from;
+    }
+
+    sliders[axis.index()] = axis.normalize(points);
+
+    let sized = FontRef {
+        key: swash::CacheKey::new(),
+        ..font
+    };
+
+    COORDS
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .insert(sized.key.value(), Vec::leak(sliders));
+
+    optical.insert(key, sized);
+
+    sized
+}
+
 pub fn coords(font: FontRef<'static>) -> &'static [i16] {
     let all_coords = COORDS.lock().unwrap_or_else(PoisonError::into_inner);
 

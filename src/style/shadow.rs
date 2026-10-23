@@ -1,6 +1,7 @@
 use crate::Color;
 use crate::graphics::Area;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Shadow {
     pub(crate) color: Color,
     pub(crate) opacity: f32,

@@ -155,6 +155,9 @@ use amane::*;
 | `.max_lines(2)` | with `wrap` |
 | `.tight()` | measures the letters' shapes, for icon fonts |
 | `.height_in(width)` | the height of wrapped text at that width |
+| `.center()` | each wrapped line in the middle of the width |
+| `.optical()` | the font's cut for this size, if it has an optical size axis |
+| `.bevel(Bevel::glass())` | raised, lit letters; `Bevel::new(depth).light(degrees).shade(...).shadow(...)` |
 
 ## TextInput
 

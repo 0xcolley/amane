@@ -1,9 +1,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use swash::FontRef;
 
-use crate::graphics::{Area, BezierPath, Color, Outline, Renderer, Transform, font, layout};
+use crate::Bevel;
+use crate::graphics::{
+    Area, BezierPath, Color, Corners, Outline, Renderer, Transform, bevel, font, layout,
+};
 
 use super::Command;
 
@@ -30,6 +34,54 @@ impl Renderer {
             Some(scale) => self.text_pictures(content, font, size * scale, color, area),
             None => self.text_outlines(content, font, size, color, area),
         }
+    }
+
+    /*
+     * lit letters are baked into one picture, lined up on whole pixels the
+     * way plain letters are; turned or stretched text draws plainly
+     */
+    pub fn text_bevel(
+        &mut self,
+        content: &str,
+        font: FontRef<'static>,
+        size: f32,
+        color: Color,
+        area: Area,
+        lit: &Bevel,
+    ) {
+        let (Some(scale), Some(back)) = (self.transform.even_scale(), self.transform.invert())
+        else {
+            return self.text(content, font, size, color, area);
+        };
+
+        let pixel_size = size * scale;
+
+        let Some(baked) = bevel::baked(content, font, pixel_size, color, lit, scale) else {
+            return;
+        };
+
+        let ascent = font.metrics(font::coords(font)).scale(pixel_size).ascent;
+
+        let start = self.transform.map(area.x, area.y);
+
+        let line_x = start.0.round();
+        let baseline = (start.1 + ascent).round();
+
+        let (x, y) = back.map(line_x + baked.left, baseline + baked.top);
+
+        let placement = Area::new(
+            x,
+            y,
+            baked.bitmap.width() as f32 / scale,
+            baked.bitmap.height() as f32 / scale,
+        );
+
+        self.image(
+            placement,
+            Corners::from(0.0),
+            Arc::clone(&baked.bitmap),
+            placement,
+        );
     }
 
     /*

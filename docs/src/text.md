@@ -86,6 +86,49 @@ let body = Text::new(notification.body()).wrap();
 let height = body.height_in(360.0);
 ```
 
+Wrapped lines start at the left by default. `center` puts each line in the middle of the width instead, for a caption under something centred:
+
+```rust,ignore
+Text::new("Enter the password you use to log in").wrap().max_lines(2).center()
+```
+
+## Optical sizes
+
+Some variable fonts, such as Inter, have an optical size axis: a cut drawn for small text, with wider letters and looser spacing, and one drawn for large display text, which is tighter. `optical` picks the cut that matches the text's size. Fonts without the axis are drawn as before.
+
+```rust,ignore
+Text::new("9:41").size(120.0).weight(Weight::Bold).optical()
+```
+
+## Lit letters
+
+`bevel` draws the letters as if they were raised and lit. The edges facing the light catch it, the edges facing away fall into shade, a thin ring can trace the outside, and a shadow can fall behind. The letters' own color fills the middle.
+
+```rust,ignore
+// frosted glass, like the clock on macOS 26's lock screen
+Text::new("9:41").size(120.0).color(Color::rgba(242, 238, 246, 196)).bevel(Bevel::glass())
+
+// raised, lit from the top left
+Text::new("raised").bevel(
+    Bevel::new(3.0)
+        .light(135.0)
+        .shade(Color::rgba(60, 20, 50, 110))
+        .shadow(Shadow::drop(Color::BLACK).opacity(0.35).blur(6.0).offset(0.0, 3.0)),
+)
+```
+
+| Method | Does |
+|---|---|
+| `Bevel::new(depth)` | how far in from the edges the light and shade reach, in pixels |
+| `Bevel::glass()` | frosted glass: softened corners, every edge lit, a faint dark line outside |
+| `.light(degrees)` | where the light comes from: 0 from the right, 90 from above (100, just left of above, by default) |
+| `.highlight(color)` / `.shade(color)` | what the lit and unlit edges are painted with. A light shade makes every edge glow. |
+| `.outline(width, color)` | a ring just outside the letters |
+| `.shadow(Shadow)` | a shadow behind them, like a rectangle's drop shadow |
+| `.round(radius)` | rounds the letters' corners off |
+
+The lighting is worked out once, on the CPU, and kept as a picture, so it suits text that rarely changes, such as a clock's minutes or a heading. Text that changes every frame would be lit again every frame.
+
 ## Icon fonts
 
 Text is normally measured by the space its letters take when typed, including some room on each side. For icon fonts, that extra room makes icons look a little off-center. `tight` measures the letters' actual shapes instead:

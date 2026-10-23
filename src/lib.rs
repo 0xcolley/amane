@@ -52,7 +52,7 @@ pub use services::{
     Palette, Pam, PamConfig, PamError, PamMessage, PamMessageKind, PamResult, Service, Urgency,
     Workspace, Workspaces,
 };
-pub use style::{Fill, Image, Mask, Radius, Shadow};
+pub use style::{Bevel, Fill, Image, Mask, Radius, Shadow};
 pub use widgets::{
     Arc, Canvas, Circle, Column, Line, Path, Rectangle, Row, ScrollArea, Shape, Stack, Text,
     TextInput, Widget,
