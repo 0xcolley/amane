@@ -22,6 +22,7 @@ Based on MystiaFin/amane at `544cbfc`.
   - **Letter placement:** letters are placed to a quarter pixel instead of each snapping to a whole pixel, which evens out the gaps between them.
   - **Light text:** the soft edges of light letters are lifted, so white text on dark backgrounds no longer reads thin.
   - The same applies to every widget that measures or draws text, so wrapping, eliding and the text-input caret follow the shaped widths.
+- **`Spring`:** a value pulled toward its target by a spring, set by a response time and a damping, like SwiftUI's. It keeps its speed when the target changes, can overshoot and settle back, and follows drags with `jump` and `fling`. See [Animation](../docs/src/animation.md#springs).
 - **`amane snapshot`:** draws one window of the compiled shell to a PNG without a compositor, after any IPC calls, at any scale, optionally over a picture or a colour that is blurred under its backdrops. `amane::headless()` tells the shell it's being run for a snapshot. See [The amane Command](../docs/src/cli.md#snapshots).
 
 ## Support

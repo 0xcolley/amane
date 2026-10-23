@@ -214,6 +214,11 @@ use amane::*;
 | `.easing(Easing::InOut)` | `Out` (default), `InOut`, `Linear` |
 | `animation.to(target)` | starts moving from wherever it is now |
 | `animation.value()` | the current value. Keeps frames coming while it moves. |
+| `Spring::smooth(0.0)` | a spring, no overshoot. Also `snappy` and `bouncy`. |
+| `.response(Duration::from_millis(400))` | how long one swing takes |
+| `.damping(0.7)` | below `1` bounces, `1` doesn't overshoot |
+| `spring.to(target)` | keeps its speed when the target changes |
+| `spring.jump(value)` / `spring.fling(target, speed)` | follow a drag, then let go |
 | `amane::request_frame()` | asks for one more frame |
 
 ## Services

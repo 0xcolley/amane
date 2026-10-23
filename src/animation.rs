@@ -2,6 +2,10 @@ use std::time::{Duration, Instant};
 
 use crate::Color;
 
+mod spring;
+
+pub use spring::Spring;
+
 pub struct Animation<T: Blend = f32> {
     pub(crate) from: T,
     pub(crate) target: T,

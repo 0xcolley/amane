@@ -168,6 +168,86 @@ fn toggle(_: &[String]) -> String {
 
 `amane ipc call toggle` slides the panel up past the screen edge (a negative margin), and back down the next time ([IPC](ipc.md)).
 
+## Springs
+
+An `Animation` takes a fixed time and doesn't keep its speed: turned around halfway, it sets off again from a standstill. A `Spring` moves like a real one. It's pulled toward its target, keeps its speed when the target changes, and can overshoot a little and settle back. Use it for things that open, slide or resize, especially when they can be interrupted.
+
+```rust,ignore
+use std::time::Duration;
+
+use amane::Spring;
+
+struct Panel {
+    height: Spring,
+}
+
+// in new()
+height: Spring::bouncy(100.0),
+
+// in a click handler
+Panel::write().height.to(400.0);
+
+// in the view
+.height(panel.height.value())
+```
+
+`to`, `value` and the redrawing work exactly as for an `Animation`. A spring keeps asking for frames until it has arrived and stopped.
+
+### How it feels
+
+A spring has two settings instead of a duration and an easing:
+
+```rust,ignore
+Spring::new(0.0)
+    .response(Duration::from_millis(400))
+    .damping(0.7)
+```
+
+- **`response`:** how long one swing takes, 350 ms by default. Shorter is stiffer and quicker.
+- **`damping`:** how quickly the swinging dies out.
+  - `1` (the default) arrives as fast as it can without overshooting.
+  - Below `1` overshoots and bounces back. `0.7` is a gentle bounce, `0.5` a clear one.
+  - Above `1` creeps in more slowly, without overshooting.
+
+Three ready-made feels:
+
+| Spring | Feel |
+|---|---|
+| `Spring::snappy(value)` | quick, no overshoot (250 ms, damping 1). For switches and small parts. |
+| `Spring::smooth(value)` | no overshoot (350 ms, damping 1). The same as `Spring::new`. |
+| `Spring::bouncy(value)` | overshoots by about 5% and settles back (400 ms, damping 0.7) |
+
+`response` and `damping` can follow a preset to change it, as in `Spring::bouncy(0.0).damping(0.6)`. They can also change while the spring moves, for example to rise quickly and sink slowly. It carries on from where it is, at the speed it has:
+
+```rust,ignore
+panel.offset = panel.offset.response(Duration::from_millis(500));
+panel.offset.to(hidden);
+```
+
+### Arriving
+
+A spring has arrived once both how far it still has to go and how fast it's moving are tiny. `.precision(0.5)` sets how close counts, in the value's own units. The default, `0.01`, suits small values like a scale of `1.0`. For pixels, `0.5` saves a few frames that nobody would see.
+
+`settled()` is `true` once it has arrived, for example to hide a window only after it has finished sliding out.
+
+### Dragging and flicking
+
+While something follows a finger or the pointer, put the spring exactly where it should be with `jump`. It stays there, at rest. When it's let go, `fling(target, speed)` sends it on with the speed it was moving at, in units a second:
+
+```rust,ignore
+// while dragging
+page.offset.jump(offset);
+
+// on release
+page.offset.fling(0.0, speed);
+```
+
+`velocity()` gives its current speed, for example to carry it into the next motion.
+
+### Overshooting
+
+A spring with a damping below `1` goes past its target. Keep that in mind for values that must stay in a range: an opacity overshooting `1.0`, or a size swinging below `0`. Fade with an `Animation`, and use bouncy springs for positions, sizes and scales.
+
 ## Motion you control yourself
 
 Some motion never arrives, like a spinner or a pulsing dot. For that, compute the position from the time yourself, and call `request_frame()` to ask for another frame:
@@ -210,4 +290,6 @@ Stop calling `request_frame()` once the motion is done, so the window can rest. 
 ## Terms
 
 - **Easing:** the curve that maps time passed to distance traveled.
+- **Spring:** motion worked out from a pull toward the target and a damping, instead of a curve over a fixed time.
+- **Damping:** how quickly a spring's swinging dies out. At `1` it arrives without overshooting.
 - **Frame callback:** the compositor's signal that it's ready for the next frame. Amane waits for it, so animations run at the monitor's refresh rate.
