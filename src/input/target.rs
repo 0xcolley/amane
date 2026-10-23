@@ -8,7 +8,9 @@ use crate::{Button, Cursor, Key, Pinch, Point, Scroll, Swipe};
  * shared, so the hit areas kept after a redraw
  * still work once the widget tree they came from is dropped
  */
-pub type ClickHandler = Rc<dyn Fn(Button)>;
+// a click gets where it landed on the widget, in the widget's own space
+pub type ClickHandler = Rc<dyn Fn(Button, Point)>;
+pub type ButtonHandler = Rc<dyn Fn(Button)>;
 pub type HoverHandler = Rc<dyn Fn(bool)>;
 pub type ScrollHandler = Rc<dyn Fn(Scroll)>;
 pub type KeyHandler = Rc<dyn Fn(Key)>;
@@ -21,8 +23,8 @@ pub type PinchHandler = Rc<dyn Fn(Pinch)>;
 #[derive(Clone, Default)]
 pub struct Handlers {
     pub click: Option<ClickHandler>,
-    pub press: Option<ClickHandler>,
-    pub release: Option<ClickHandler>,
+    pub press: Option<ButtonHandler>,
+    pub release: Option<ButtonHandler>,
     pub hover: Option<HoverHandler>,
     pub scroll: Option<ScrollHandler>,
     pub drag: Option<PointHandler>,

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::graphics::Area;
 use crate::input::focus::{self, FocusHandler};
 use crate::input::{Cursor, Handlers, Target, modifiers};
-use crate::{Button, Key};
+use crate::{Button, Key, Point};
 
 use super::field::Edit;
 use super::{TextHandler, TextInput, fields};
@@ -17,7 +17,7 @@ pub fn collect_targets(text_input: &TextInput, area: Area, targets: &mut Vec<Tar
         focus::set(id, on_key.clone());
     }
 
-    let on_click = move |_: Button| {
+    let on_click = move |_: Button, _: Point| {
         focus::set(id, on_key.clone());
     };
 

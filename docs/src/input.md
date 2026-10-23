@@ -50,6 +50,7 @@ All of these are methods on `Rectangle`:
 | Method | Called | Gets |
 |---|---|---|
 | `on_click` | when a button is pressed and released over the same rectangle | which `Button`: `Left`, `Right`, or `Middle` |
+| `on_click_at` | the same as `on_click` | the `Button`, and the `Point` where it landed |
 | `on_press` | as soon as a button goes down on it | the `Button` |
 | `on_release` | when the button pressed on it goes up, wherever the pointer is by then | the `Button` |
 | `on_hover` | when the pointer comes in, and when it goes out | `true` when it comes in, `false` when it goes out |
@@ -60,7 +61,22 @@ All of these are methods on `Rectangle`:
 | `on_swipe` | while fingers slide sideways over it on a touchpad | a `Swipe`, see [Touchpad gestures](#touchpad-gestures) |
 | `on_pinch` | while fingers spread or close over it on a touchpad | a `Pinch` |
 
-A `Point` has `x` and `y`, measured in pixels from the rectangle's top-left corner. During `on_drag`, the point keeps coming even after the pointer leaves the rectangle, so it can be negative or bigger than the rectangle. Clamp it.
+A `Point` has `x` and `y`, measured in pixels from the rectangle's top-left corner. A context menu that opens where the right button was clicked can use `on_click_at`:
+
+```rust,ignore
+Rectangle::new()
+    .width(Parent)
+    .height(Parent)
+    .on_click_at(|button, point| {
+        if button == Button::Right {
+            open_menu_at(point.x, point.y);
+        }
+    })
+```
+
+Anything else that follows the pointer, like a glow under it, belongs in `on_move`. It runs on every movement and redraws each time, so it costs more than reading the point once on a click.
+
+During `on_drag`, the point keeps coming even after the pointer leaves the rectangle, so it can be negative or bigger than the rectangle. Clamp it.
 
 A `Scroll` is measured in lines, so a mouse wheel and a touchpad move things by the same amount. Positive `y` means scrolling down, and positive `x` means scrolling right. It also says what made it:
 

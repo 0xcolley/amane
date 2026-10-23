@@ -9,6 +9,13 @@ use super::{child, transform};
 
 impl Rectangle {
     pub fn on_click(mut self, handler: impl Fn(Button) + 'static) -> Self {
+        self.handlers.click = Some(Rc::new(move |button, _| handler(button)));
+
+        self
+    }
+
+    // the same, with where on the rectangle the click landed; for a menu that opens there
+    pub fn on_click_at(mut self, handler: impl Fn(Button, Point) + 'static) -> Self {
         self.handlers.click = Some(Rc::new(handler));
 
         self

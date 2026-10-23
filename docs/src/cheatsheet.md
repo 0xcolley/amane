@@ -126,6 +126,7 @@ use amane::*;
 | Code | Called with |
 |---|---|
 | `.on_click(\|button\| ...)` | `Button::Left`, `Right`, `Middle` |
+| `.on_click_at(\|button, point\| ...)` | the same, and where it landed |
 | `.on_press(\|button\| ...)` | as the button goes down |
 | `.on_release(\|button\| ...)` | as the pressed button goes up, wherever the pointer is |
 | `.on_hover(\|inside\| ...)` | `true` on enter, `false` on leave |

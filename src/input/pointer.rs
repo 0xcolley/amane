@@ -211,11 +211,13 @@ impl Pointer {
             return false;
         }
 
-        let Some(click) = &self.targets[pressed].handlers.click else {
+        let target = &self.targets[pressed];
+
+        let Some(click) = &target.handlers.click else {
             return false;
         };
 
-        click(button);
+        click(button, target.point(self.x, self.y));
 
         true
     }
@@ -315,7 +317,7 @@ mod tests {
         let button = Handlers {
             press: Some(Rc::new(move |_| note(&press, "press"))),
             release: Some(Rc::new(move |_| note(&release, "release"))),
-            click: Some(Rc::new(move |_| note(&click, "click"))),
+            click: Some(Rc::new(move |_, _| note(&click, "click"))),
             drag: Some(Rc::new(|_| {})),
             drag_end: Some(Rc::new(move || note(&ended, "drag end"))),
             ..Handlers::default()
@@ -375,6 +377,32 @@ mod tests {
         button_up(&mut pointer);
 
         assert_eq!(*log.borrow(), ["press", "drag end", "release", "click"]);
+    }
+
+    #[test]
+    fn a_click_knows_where_on_the_widget_it_landed() {
+        let log = Log::default();
+        let clicked = log.clone();
+
+        let handlers = Handlers {
+            click: Some(Rc::new(move |_, at: Point| {
+                note(&clicked, format!("click {} {}", at.x, at.y))
+            })),
+            ..Handlers::default()
+        };
+
+        let mut pointer = Pointer::default();
+
+        pointer.set_targets(vec![Target::new(
+            Area::new(40.0, 10.0, 100.0, 100.0),
+            handlers,
+        )]);
+
+        pointer.move_to(70.0, 35.0);
+        button_down(&mut pointer);
+        button_up(&mut pointer);
+
+        assert_eq!(*log.borrow(), ["click 30 25"]);
     }
 
     #[test]
