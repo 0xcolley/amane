@@ -259,7 +259,8 @@ use amane::*;
 | `Apps` | `list` | `launch` on each `DesktopApp` |
 | `Palette` | `colors`, `dominant`, `accent`, `background`, `foreground`, `on_accent`, `light` | `open` |
 | [`Pam`](pam.md) | `active`, `messages`, `prompt`, `result` | `start`, `respond`, `abort` |
-| [`Lock`](lock_screen.md) | `checking`, `failed` | `start`, `unlock`, `authenticate`, `abort` |
+| [`Lock`](lock_screen.md) | `checking`, `failed`, `locked` | `start`, `unlock`, `authenticate`, `abort`, `follow_logind` |
+| [`Idle`](idle.md) | `idle`, `awake` | `watch`, `keep_awake` |
 
 ## Commands, files, IPC, D-Bus
 

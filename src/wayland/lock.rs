@@ -87,6 +87,8 @@ impl WaylandState {
 
         self.session_lock = None;
 
+        Lock::set_locked(false);
+
         self.close_lock_screens();
 
         /*
@@ -110,6 +112,8 @@ impl WaylandState {
 
 impl SessionLockHandler for WaylandState {
     fn locked(&mut self, _: &Connection, _: &QueueHandle<Self>, _: SessionLock) {
+        Lock::set_locked(true);
+
         let outputs: Vec<WlOutput> = self.output.outputs().collect();
 
         for output in outputs {
@@ -122,6 +126,8 @@ impl SessionLockHandler for WaylandState {
         eprintln!("amane: the compositor refused or ended the session lock");
 
         self.session_lock = None;
+
+        Lock::set_locked(false);
 
         self.close_lock_screens();
     }

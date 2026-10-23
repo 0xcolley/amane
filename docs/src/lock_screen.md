@@ -99,6 +99,23 @@ binds {
 }
 ```
 
+## Locking with logind
+
+`Lock::follow_logind()` locks the session when systemd-logind asks, and before the computer sleeps. Call it once, before `run()`:
+
+```rust,ignore
+fn main() {
+    Lock::follow_logind();
+
+    App::new().window(bar).lock(lock_screen).run();
+}
+```
+
+- **`loginctl lock-session`** locks, and so does anything else that asks logind to lock this session.
+- **Before sleep:** the shell holds sleep back for a moment, starts the lock, and lets the computer sleep once the compositor has granted it, so it never wakes up unlocked. logind waits at most 5 seconds for this; the shell waits at most 3.
+
+To lock after a few minutes without input, use an [Idle](idle.md) watch.
+
 ## Interactive authentication
 
 For a configurable policy or a conversation with separate responses, start authentication from a handler:
@@ -119,10 +136,12 @@ Read the `Pam` Service in your lock view to show information, error messages and
 |---|---|
 | `Lock::read().checking()` | authentication is running |
 | `Lock::read().failed()` | the last attempt was rejected or failed |
+| `Lock::read().locked()` | the compositor has granted the lock, and shows only the lock screens |
 | `Lock::start()` | locks the session |
 | `Lock::unlock(password)` | checks a password, and unlocks if it's right |
 | `Lock::authenticate(config)` | starts interactive authentication, and unlocks on success |
 | `Lock::abort()` | cancels authentication and keeps the session locked |
+| `Lock::follow_logind()` | locks when logind asks, and before sleep |
 
 Only one PAM attempt runs at a time. Calling `unlock` while a check is running does nothing; `authenticate` returns `PamError::Busy`. The password convenience function supplies the same password to every prompt. Use interactive authentication when a policy asks for different responses. Each new lock starts clean, without the last lock's `failed` state.
 

@@ -48,7 +48,7 @@ pub use process::{lines, output, spawn};
 pub use snapshot::headless;
 pub use services::{
     AccessPoint, Action, Apps, Audio, Battery, Bluetooth, BluetoothDevice, Brightness, Cpu,
-    DesktopApp, Link, Lock, Media, MediaPlayer, Memory, Network, Notification, Notifications,
+    DesktopApp, Idle, Link, Lock, Media, MediaPlayer, Memory, Network, Notification, Notifications,
     Palette, Pam, PamConfig, PamError, PamMessage, PamMessageKind, PamResult, Service, Urgency,
     Workspace, Workspaces,
 };

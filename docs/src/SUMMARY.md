@@ -46,6 +46,7 @@
 - [Apps](apps.md)
 - [Palette](palette.md)
 - [PAM Authentication](pam.md)
+- [Idle](idle.md)
 
 # Talking to the System
 

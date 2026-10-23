@@ -1,3 +1,5 @@
+mod logind;
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -21,6 +23,9 @@ pub struct Lock {
 
     // the backend ends the lock once this is set, only pam sets it
     unlocked: bool,
+
+    // the compositor has granted the lock, until it ends
+    locked: bool,
     attempt: Option<Arc<Session>>,
 }
 
@@ -45,6 +50,26 @@ impl Lock {
 
     pub(crate) fn unlocked(&self) -> bool {
         self.unlocked
+    }
+
+    // the session is locked: the compositor has granted it and shows only the lock screens
+    pub fn locked(&self) -> bool {
+        self.locked
+    }
+
+    pub(crate) fn set_locked(locked: bool) {
+        if Self::read().locked != locked {
+            Self::write().locked = locked;
+        }
+    }
+
+    /*
+     * locks when logind asks, as `loginctl lock-session` does, and before the
+     * computer sleeps, holding the sleep back until the lock screens are up so
+     * it never wakes unlocked. Starts its own threads; call it once
+     */
+    pub fn follow_logind() {
+        logind::follow();
     }
 
     /*

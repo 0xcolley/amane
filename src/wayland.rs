@@ -2,6 +2,7 @@ mod compositor;
 mod dropped;
 mod effect;
 mod gestures;
+mod idle;
 mod keyboard;
 mod layer;
 mod lock;
@@ -17,9 +18,13 @@ mod update;
 mod wake;
 mod windows;
 
+use std::collections::HashMap;
+
 use smithay_client_toolkit::reexports::protocols::ext::background_effect::v1::client::ext_background_effect_manager_v1::ExtBackgroundEffectManagerV1;
+use smithay_client_toolkit::reexports::protocols::ext::idle_notify::v1::client::ext_idle_notifier_v1::ExtIdleNotifierV1;
 use smithay_client_toolkit::reexports::protocols::wp::{
     fractional_scale::v1::client::wp_fractional_scale_manager_v1::WpFractionalScaleManagerV1,
+    idle_inhibit::zv1::client::zwp_idle_inhibit_manager_v1::ZwpIdleInhibitManagerV1,
     pointer_gestures::zv1::client::zwp_pointer_gestures_v1::ZwpPointerGesturesV1,
     viewporter::client::wp_viewporter::WpViewporter,
 };
@@ -86,6 +91,15 @@ struct WaylandState {
     gestures: Option<gestures::Gestures>,
     gesture_surface: Option<WlSurface>,
 
+    /*
+     * the Idle watches as the compositor counts them, and what keeps the
+     * screen awake; none when the compositor lacks the protocol
+     */
+    idle_notifier: Option<ExtIdleNotifierV1>,
+    idle_watches: HashMap<String, idle::IdleWatch>,
+    idle_inhibit_manager: Option<ZwpIdleInhibitManagerV1>,
+    inhibitor: Option<idle::Inhibitor>,
+
     // held keys repeat on a timer in the event loop, none until the loop exists
     loop_handle: Option<LoopHandle<'static, WaylandState>>,
 
@@ -150,6 +164,8 @@ impl WaylandApp {
         let viewporter = globals.bind(&qh, 1..=1, ()).ok();
         let background_effect = globals.bind(&qh, 1..=1, ()).ok();
         let pointer_gestures = globals.bind(&qh, 1..=3, ()).ok();
+        let idle_notifier = globals.bind(&qh, 1..=1, ()).ok();
+        let idle_inhibit_manager = globals.bind(&qh, 1..=1, ()).ok();
 
         let data_device_manager = DataDeviceManagerState::bind(&globals, &qh).ok();
 
@@ -180,6 +196,11 @@ impl WaylandApp {
             pointer_gestures,
             gestures: None,
             gesture_surface: None,
+
+            idle_notifier,
+            idle_watches: HashMap::new(),
+            idle_inhibit_manager,
+            inhibitor: None,
 
             loop_handle: None,
 
@@ -226,6 +247,9 @@ impl WaylandApp {
         }
 
         wake::insert(&event_loop.handle());
+
+        // an Idle::watch before run() has no event loop to wake yet either
+        state.update_idle();
 
         // keyboards arrive while the loop runs, after this
         state.loop_handle = Some(event_loop.handle());
